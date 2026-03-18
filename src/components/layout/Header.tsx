@@ -1,226 +1,113 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import {
-  Search,
-  Menu,
-  Sun,
-  Moon,
-  Bell,
-  Wallet,
-  Plus,
-  Image,
-  FolderOpen,
-  X,
-} from 'lucide-react'
-import { useTheme } from '../../context/ThemeContext'
-import { cn } from '../../lib/utils'
-import { ROUTES } from '../../lib/constants'
-import { Button } from '../ui/Button'
-import { Avatar } from '../ui/Avatar'
-import { Dropdown } from '../ui/Dropdown'
-import { MobileNav } from './MobileNav'
-
-const MOCK_WALLET = {
-  connected: false,
-  address: '0x1234567890abcdef1234567890abcdef12345678',
-}
+import { useRef, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { OneIdAuth } from '@explorills/one-id-auth'
+import { EcosystemDropdown } from './EcosystemDropdown'
+import { PoweredByExplNodes } from './PoweredByExplNodes'
+import logo from '/logo.png'
 
 export function Header() {
-  const { isDark, toggleTheme } = useTheme()
-  const navigate = useNavigate()
+  const headerRef = useRef<HTMLDivElement>(null)
+  const logoRef = useRef<HTMLImageElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const badgeRef = useRef<HTMLAnchorElement & HTMLDivElement>(null)
+  const rightRef = useRef<HTMLDivElement>(null)
+  const [hideTitle, setHideTitle] = useState(false)
+  const [hideBadge, setHideBadge] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [searchExpanded, setSearchExpanded] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(MOCK_WALLET.connected)
 
   useEffect(() => {
-    function onScroll() {
-      setScrolled(window.scrollY > 10)
-    }
+    const onScroll = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Lock body scroll when mobile menu is open
   useEffect(() => {
-    document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [mobileMenuOpen])
+    const THRESHOLD = 8
+    const BUFFER = 30
 
-  const handleCreateSelect = useCallback(
-    (id: string) => {
-      if (id === 'nft') navigate(ROUTES.create)
-      if (id === 'collection') navigate(ROUTES.createCollection)
-    },
-    [navigate],
-  )
+    const check = () => {
+      const right = rightRef.current
+      if (!right) return
+
+      const rightRect = right.getBoundingClientRect()
+
+      if (badgeRef.current && !hideBadge) {
+        const gap = rightRect.left - badgeRef.current.getBoundingClientRect().right
+        if (gap < THRESHOLD) { setHideBadge(true); return }
+      }
+
+      if (hideBadge && titleRef.current && !hideTitle) {
+        const gap = rightRect.left - titleRef.current.getBoundingClientRect().right
+        if (gap < THRESHOLD) { setHideTitle(true); return }
+      }
+
+      if (hideTitle && logoRef.current) {
+        const space = rightRect.left - logoRef.current.getBoundingClientRect().right
+        if (space >= 160 + THRESHOLD + BUFFER) { setHideTitle(false); return }
+      }
+
+      if (hideBadge && !hideTitle && titleRef.current) {
+        const space = rightRect.left - titleRef.current.getBoundingClientRect().right
+        if (space >= 220 + THRESHOLD + BUFFER) { setHideBadge(false); return }
+      }
+    }
+
+    const t = setTimeout(check, 50)
+    const ro = new ResizeObserver(() => requestAnimationFrame(check))
+    if (headerRef.current) ro.observe(headerRef.current)
+    return () => { clearTimeout(t); ro.disconnect() }
+  }, [hideBadge, hideTitle])
 
   return (
-    <>
-      <header
-        className={cn(
-          'fixed top-0 right-0 left-0 z-40 h-14 md:h-16',
-          'flex items-center px-4 md:px-6',
-          'transition-[background-color,box-shadow,backdrop-filter] duration-200',
-          scrolled
-            ? 'bg-white/80 shadow-sm backdrop-blur-lg dark:bg-zinc-950/80'
-            : 'bg-white dark:bg-zinc-950',
-        )}
-      >
-        {/* Left: Logo */}
-        <Link
-          to={ROUTES.home}
-          className={cn(
-            'mr-4 flex shrink-0 items-center gap-2 font-bold text-lg',
-            'text-zinc-900 dark:text-white',
-            searchExpanded && 'hidden md:flex',
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 w-full border-b border-border transition-all duration-200 ${
+        scrolled
+          ? 'bg-background/80 backdrop-blur-lg'
+          : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+      }`}
+    >
+      <div ref={headerRef} className="container mx-auto flex h-[68px] items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <Link to="/">
+            <img ref={logoRef} src={logo} alt="ONE deal" className="h-13 w-13" />
+          </Link>
+          {!hideTitle && (
+            <Link to="/">
+              <p
+                ref={titleRef}
+                role="heading"
+                aria-level={2}
+                className="text-[24px] font-bold tracking-tight whitespace-nowrap"
+              >
+                ONE <span className="text-primary drop-shadow-[0_0_8px_oklch(0.72_0.17_195/0.8)]">deal</span>
+              </p>
+            </Link>
           )}
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-extrabold text-white">
-            O
-          </div>
-          <span className="hidden sm:inline">ONE Deal</span>
-        </Link>
-
-        {/* Center: Search */}
-        <div
-          className={cn(
-            'relative flex-1 transition-all duration-200',
-            searchExpanded ? 'flex' : 'hidden md:flex',
-            'max-w-xl mx-auto',
+          {!hideBadge && (
+            <div ref={badgeRef}>
+              <PoweredByExplNodes size="sm" />
+            </div>
           )}
-        >
-          <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Search NFTs, collections, creators..."
-              className={cn(
-                'h-9 md:h-10 w-full rounded-full border pl-10 pr-4 text-sm',
-                'bg-zinc-100 border-zinc-200 text-zinc-900 placeholder:text-zinc-400',
-                'dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500',
-                'transition-colors duration-150 focus-ring',
-              )}
-            />
-          </div>
-          {/* Mobile close search */}
-          <button
-            onClick={() => setSearchExpanded(false)}
-            className="ml-2 flex shrink-0 items-center md:hidden text-zinc-500 dark:text-zinc-400"
-            aria-label="Close search"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
-        {/* Right: Desktop Nav */}
-        <nav
-          className={cn(
-            'ml-4 items-center gap-1',
-            'hidden md:flex',
-          )}
-        >
-          <Link
-            to={ROUTES.explore}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          >
-            Explore
-          </Link>
-          <Link
-            to={ROUTES.rankings}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          >
-            Rankings
-          </Link>
-          <Dropdown
-            trigger={
-              <Button variant="ghost" size="sm" className="gap-1.5">
-                <Plus className="h-4 w-4" />
-                Create
-              </Button>
-            }
-            items={[
-              { id: 'nft', label: 'NFT', icon: <Image className="h-4 w-4" /> },
-              { id: 'collection', label: 'Collection', icon: <FolderOpen className="h-4 w-4" /> },
-            ]}
-            onSelect={handleCreateSelect}
-            align="right"
-          />
-        </nav>
+        <div ref={rightRef} className="flex items-center gap-2 shrink-0">
+          <OneIdAuth />
+          <EcosystemDropdown />
+        </div>
+      </div>
 
-        {/* Right: Actions */}
-        <div className={cn('ml-2 flex items-center gap-1', searchExpanded && 'hidden md:flex')}>
-          {/* Mobile search toggle */}
-          <button
-            onClick={() => setSearchExpanded(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 md:hidden"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5" />
-          </button>
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
-
-          {/* Notifications */}
-          <button
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-600" />
-          </button>
-
-          {/* Wallet */}
-          <div className="hidden md:block">
-            {walletConnected ? (
-              <button
-                onClick={() => setWalletConnected(false)}
-                className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
-              >
-                <Avatar size="sm" fallback="U" className="h-6 w-6 text-[10px]" />
-                <span className="text-zinc-900 dark:text-zinc-100">
-                  {MOCK_WALLET.address.slice(0, 6)}...{MOCK_WALLET.address.slice(-4)}
-                </span>
-              </button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => setWalletConnected(true)}
-                className="gap-1.5"
-              >
-                <Wallet className="h-4 w-4" />
-                Connect Wallet
-              </Button>
+      {(hideTitle || hideBadge) && (
+        <div className="w-full bg-background/80 backdrop-blur border-b border-border py-2">
+          <div className="container mx-auto px-4 sm:px-6 flex items-center justify-center gap-4">
+            {hideTitle && (
+              <span className="text-[20px] font-semibold whitespace-nowrap">
+                ONE <span className="text-primary drop-shadow-[0_0_8px_oklch(0.72_0.17_195/0.8)]">deal</span>
+              </span>
             )}
+            {hideBadge && <PoweredByExplNodes size="sm" />}
           </div>
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 md:hidden"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
         </div>
-      </header>
-
-      {/* Mobile navigation drawer */}
-      <MobileNav
-        open={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-        walletConnected={walletConnected}
-        walletAddress={MOCK_WALLET.address}
-        onConnectWallet={() => setWalletConnected(true)}
-        onDisconnectWallet={() => setWalletConnected(false)}
-      />
-    </>
+      )}
+    </header>
   )
 }

@@ -1,133 +1,32 @@
-import { Link } from 'react-router-dom'
-import { Send, Twitter, Github, MessageCircle } from 'lucide-react'
-import { cn } from '../../lib/utils'
-import { ROUTES } from '../../lib/constants'
-
-const FOOTER_SECTIONS = [
-  {
-    title: 'Marketplace',
-    links: [
-      { label: 'Explore', to: ROUTES.explore },
-      { label: 'Rankings', to: ROUTES.rankings },
-      { label: 'Create NFT', to: ROUTES.create },
-      { label: 'Create Collection', to: ROUTES.createCollection },
-    ],
-  },
-  {
-    title: 'Resources',
-    links: [
-      { label: 'Help Center', to: '#' },
-      { label: 'Platform Status', to: '#' },
-      { label: 'Partners', to: '#' },
-      { label: 'Blog', to: '#' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'About', to: '#' },
-      { label: 'Careers', to: '#' },
-      { label: 'Terms of Service', to: '#' },
-      { label: 'Privacy Policy', to: '#' },
-    ],
-  },
-]
-
-const SOCIAL_LINKS = [
-  { label: 'Twitter', icon: Twitter, href: '#' },
-  { label: 'Discord', icon: MessageCircle, href: '#' },
-  { label: 'GitHub', icon: Github, href: '#' },
-]
-
 export function Footer() {
+  const year = new Date().getFullYear()
+
   return (
-    <footer className="border-t border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
-        {/* Top section */}
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Brand + Newsletter */}
-          <div className="sm:col-span-2">
-            <Link to={ROUTES.home} className="inline-flex items-center gap-2 font-bold text-lg text-zinc-900 dark:text-white">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-extrabold text-white">
-                O
-              </div>
-              ONE Deal
-            </Link>
-            <p className="mt-3 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
-              The premier NFT marketplace. Discover, collect, and sell extraordinary digital assets.
-            </p>
+    <footer className="fixed bottom-0 left-0 right-0 z-40 w-full border-t border-border bg-background/95 backdrop-blur py-3">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0">
+            <a
+              href="https://expl.one"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 transition-all duration-300 hover:scale-110 hover:shadow-[0_2px_8px_oklch(0.72_0.17_195/0.6)] hover:translate-y-[-1px] cursor-pointer underline rounded-full px-1"
+            >
+              EXPL.ONE
+            </a>
+            {` \u00A9 ${year} All Rights Reserved`}
+          </span>
 
-            {/* Newsletter */}
-            <div className="mt-6">
-              <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Stay in the loop
-              </p>
-              <form
-                onSubmit={(e) => e.preventDefault()}
-                className="flex max-w-sm gap-2"
-              >
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className={cn(
-                    'h-10 flex-1 rounded-lg border px-3 text-sm',
-                    'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400',
-                    'dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-500',
-                    'transition-colors duration-150 focus-ring',
-                  )}
-                />
-                <button
-                  type="submit"
-                  className={cn(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-                    'bg-brand-600 text-white transition-colors hover:bg-brand-700',
-                  )}
-                  aria-label="Subscribe"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Link columns */}
-          {FOOTER_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                {section.title}
-              </h3>
-              <ul className="space-y-2">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      to={link.to}
-                      className="text-sm text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-200 pt-8 sm:flex-row dark:border-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            &copy; {new Date().getFullYear()} ONE Deal. All rights reserved.
-          </p>
           <div className="flex items-center gap-3">
-            {SOCIAL_LINKS.map(({ label, icon: Icon, href }) => (
-              <a
-                key={label}
-                href={href}
-                aria-label={label}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-600 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-              >
-                <Icon className="h-5 w-5" />
-              </a>
-            ))}
+            <a href="https://discord.com/invite/RetTCVq7tJ" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-all duration-300 hover:scale-110 hover:translate-y-[-1px] rounded-full p-1 text-muted-foreground" aria-label="Discord">
+              <svg width="18" height="18" viewBox="0 0 71 55" fill="currentColor"><path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309-0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978ZM23.7259 37.3253C20.2276 37.3253 17.3451 34.1136 17.3451 30.1693C17.3451 26.225 20.1717 23.0133 23.7259 23.0133C27.308 23.0133 30.1626 26.2532 30.1066 30.1693C30.1066 34.1136 27.28 37.3253 23.7259 37.3253ZM47.3178 37.3253C43.8196 37.3253 40.9371 34.1136 40.9371 30.1693C40.9371 26.225 43.7636 23.0133 47.3178 23.0133C50.9 23.0133 53.7545 26.2532 53.6986 30.1693C53.6986 34.1136 50.9 37.3253 47.3178 37.3253Z"/></svg>
+            </a>
+            <a href="https://x.com/explorills_main" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-all duration-300 hover:scale-110 hover:translate-y-[-1px] rounded-full p-1 text-muted-foreground" aria-label="X">
+              <svg width="16" height="16" viewBox="0 0 1200 1227" fill="currentColor"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"/></svg>
+            </a>
+            <a href="https://github.com/explorills/" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-all duration-300 hover:scale-110 hover:translate-y-[-1px] rounded-full p-1 text-muted-foreground" aria-label="GitHub">
+              <svg width="18" height="18" viewBox="0 0 98 96" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z"/></svg>
+            </a>
           </div>
         </div>
       </div>

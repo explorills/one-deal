@@ -1,105 +1,49 @@
-import { useState } from 'react'
-import { Heart, ShoppingCart, BadgeCheck } from 'lucide-react'
-import type { NFT } from '../../types'
-import { cn } from '../../lib/utils'
-import { Button } from '../ui'
-import { PriceDisplay } from './PriceDisplay'
-import { CountdownTimer } from './CountdownTimer'
+import { motion } from 'framer-motion'
+import { Heart } from '@phosphor-icons/react'
+import type { NFT } from '@/types'
+import { formatPrice } from '@/lib/utils'
 
-export interface NFTCardProps {
+interface NFTCardProps {
   nft: NFT
-  onBuy?: (nft: NFT) => void
-  onLike?: (nft: NFT) => void
   onClick?: (nft: NFT) => void
-  className?: string
 }
 
-function NFTCard({ nft, onBuy, onLike, onClick, className }: NFTCardProps) {
-  const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(nft.likes)
-
-  function handleLike(e: React.MouseEvent) {
-    e.stopPropagation()
-    setLiked(prev => !prev)
-    setLikeCount(prev => (liked ? prev - 1 : prev + 1))
-    onLike?.(nft)
-  }
-
-  function handleBuy(e: React.MouseEvent) {
-    e.stopPropagation()
-    onBuy?.(nft)
-  }
-
+export function NFTCard({ nft, onClick }: NFTCardProps) {
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => onClick?.(nft)}
-      className={cn(
-        'group flex flex-col overflow-hidden rounded-xl border',
-        'bg-white border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800',
-        'transition-all duration-200 hover:scale-[1.02] hover:shadow-lg dark:hover:shadow-zinc-900/50',
-        onClick && 'cursor-pointer',
-        className,
-      )}
+      className="group cursor-pointer"
     >
-      {/* Image */}
-      <div className="relative aspect-square overflow-hidden">
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary">
         <img
           src={nft.image}
           alt={nft.name}
-          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
         />
-
-        {/* Like button */}
-        <button
-          onClick={handleLike}
-          className={cn(
-            'absolute right-2 top-2 flex items-center gap-1 rounded-full px-2.5 py-1',
-            'bg-black/40 text-white backdrop-blur-sm',
-            'transition-colors duration-150 hover:bg-black/60',
-          )}
-        >
-          <Heart className={cn('h-3.5 w-3.5', liked && 'fill-red-500 text-red-500')} />
-          <span className="text-xs font-medium">{likeCount}</span>
-        </button>
-
-        {/* Countdown overlay if auction */}
-        {nft.listingExpiry && (
-          <div className="absolute bottom-2 left-2 rounded-full bg-black/40 px-2.5 py-1 backdrop-blur-sm">
-            <CountdownTimer endTime={nft.listingExpiry} className="text-white [&_span]:text-white [&_span]:!text-white" />
+        {/* Price overlay — bottom left */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 pt-8">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] text-white/60 font-mono">{nft.collection.name}</p>
+              <p className="text-sm font-semibold text-white leading-tight">{nft.name}</p>
+            </div>
+            <span className="text-sm font-bold text-primary font-mono tabular-nums">
+              {formatPrice(nft.price, nft.currency)}
+            </span>
           </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        {/* Collection name */}
-        <div className="flex items-center gap-1">
-          <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-            {nft.collection.name}
-          </span>
-          {nft.collection.isVerified && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-500" />
-          )}
         </div>
-
-        {/* NFT name */}
-        <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          {nft.name}
-        </h3>
-
-        {/* Price + Buy */}
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          <PriceDisplay price={nft.price} currency={nft.currency} size="sm" />
-          {nft.isListed && (
-            <Button size="sm" onClick={handleBuy} className="gap-1.5">
-              <ShoppingCart className="h-3.5 w-3.5" />
-              Buy
-            </Button>
-          )}
+        {/* Likes — top right */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2 py-1 text-[11px] text-white/80">
+          <Heart size={12} weight="fill" className="text-primary" />
+          {nft.likes}
         </div>
+        {/* Hover glow */}
+        <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-white/5 transition-all duration-300 group-hover:ring-primary/30 group-hover:shadow-[inset_0_0_30px_oklch(0.72_0.17_195/0.1)]" />
       </div>
-    </div>
+    </motion.div>
   )
 }
-
-export { NFTCard }

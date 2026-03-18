@@ -1,9 +1,19 @@
-export const BRAND_COLOR = '#7C3AED'
+export const WALLETCONNECT_PROJECT_ID = '1fe344d4623291d85ad7369cbc6d9ec8'
 
-export const CURRENCIES = ['ETH', 'WETH', 'USDC'] as const
-export type Currency = (typeof CURRENCIES)[number]
+export const ROUTES = {
+  home: '/',
+  explore: '/explore',
+  nftDetail: '/nft/:id',
+  collection: '/collection/:id',
+  profile: '/profile/:address',
+  create: '/create',
+  createCollection: '/create-collection',
+  settings: '/settings',
+  rankings: '/rankings',
+} as const
 
 export const COLLECTION_CATEGORIES = [
+  { value: 'all', label: 'All' },
   { value: 'art', label: 'Art' },
   { value: 'photography', label: 'Photography' },
   { value: 'pfp', label: 'PFP' },
@@ -19,17 +29,16 @@ export const SORT_OPTIONS = [
   { value: 'price-low', label: 'Price: Low to High' },
   { value: 'price-high', label: 'Price: High to Low' },
   { value: 'most-liked', label: 'Most Liked' },
-  { value: 'ending-soon', label: 'Ending Soon' },
 ] as const
 
-export const ROUTES = {
-  home: '/',
-  explore: '/explore',
-  nftDetail: '/nft/:id',
-  collection: '/collection/:id',
-  profile: '/profile/:address',
-  create: '/create',
-  createCollection: '/create-collection',
-  settings: '/settings',
-  rankings: '/rankings',
-} as const
+export const ECOSYSTEM_LINKS = [
+  { name: 'MAIN', url: 'https://expl.one' },
+  { name: 'pump', url: 'https://pump.expl.one' },
+  { name: 'network', url: 'https://network.expl.one' },
+  { name: 'deal', url: 'https://deal.expl.one' },
+  { name: 'world', url: 'https://world.expl.one' },
+  { name: 'id', url: 'https://id.expl.one' },
+  { name: 'box', url: 'https://box.expl.one' },
+  { name: 'EXPL Nodes', url: 'https://node.expl.one' },
+  { name: 'docs', url: 'https://docs.expl.one' },
+]

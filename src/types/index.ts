@@ -20,6 +20,14 @@ export interface UserStats {
   following: number
 }
 
+export interface UserSummary {
+  address: string
+  username: string
+  displayName: string
+  avatar: string
+  isVerified: boolean
+}
+
 export interface NFT {
   id: string
   tokenId: string
@@ -42,19 +50,11 @@ export interface NFT {
   createdAt: string
 }
 
-export interface CollectionSummary {
+export interface NFTSummary {
   id: string
   name: string
   image: string
-  isVerified: boolean
-}
-
-export interface UserSummary {
-  address: string
-  username: string
-  displayName: string
-  avatar: string
-  isVerified: boolean
+  collection: CollectionSummary
 }
 
 export interface Collection {
@@ -68,6 +68,13 @@ export interface Collection {
   category: CollectionCategory
   stats: CollectionStats
   createdAt: string
+}
+
+export interface CollectionSummary {
+  id: string
+  name: string
+  image: string
+  isVerified: boolean
 }
 
 export interface CollectionStats {
@@ -128,21 +135,6 @@ export type ActivityType =
   | 'transfer'
   | 'mint'
   | 'cancel'
-
-export interface NFTSummary {
-  id: string
-  name: string
-  image: string
-  collection: CollectionSummary
-}
-
-export interface Notification {
-  id: string
-  type: 'sale' | 'bid' | 'outbid' | 'transfer' | 'follow'
-  message: string
-  read: boolean
-  timestamp: string
-}
 
 export interface RankingEntry {
   rank: number

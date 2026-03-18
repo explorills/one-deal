@@ -11,17 +11,18 @@ export function formatAddress(address: string): string {
 }
 
 export function formatPrice(price: number, currency = 'ETH'): string {
-  if (price >= 1000) {
-    return `${(price / 1000).toFixed(1)}K ${currency}`
-  }
+  if (price >= 1000) return `${(price / 1000).toFixed(1)}K ${currency}`
   return `${price.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
 }
 
-export function timeAgo(dateString: string): string {
-  const now = new Date()
-  const date = new Date(dateString)
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+export function formatCompact(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
+  return num.toString()
+}
 
+export function timeAgo(dateString: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000)
   if (seconds < 60) return 'just now'
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
@@ -31,12 +32,16 @@ export function timeAgo(dateString: string): string {
   if (days < 30) return `${days}d ago`
   const months = Math.floor(days / 30)
   if (months < 12) return `${months}mo ago`
-  const years = Math.floor(months / 12)
-  return `${years}y ago`
+  return `${Math.floor(months / 12)}y ago`
 }
 
-export function formatCompactNumber(num: number): string {
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
-  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
-  return num.toString()
+export function isDevEnvironment(): boolean {
+  const hostname = window.location.hostname
+  return hostname === 'localhost' || hostname.endsWith('.app.github.dev')
+}
+
+export function getOneIdApiUrl(): string {
+  if (isDevEnvironment()) return 'http://localhost:3010'
+  if (window.location.hostname.startsWith('staging2-all-access')) return 'https://api-dev-id.expl.one'
+  return 'https://api-id.expl.one'
 }

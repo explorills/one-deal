@@ -1,159 +1,87 @@
-import { useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Tabs, Button } from '../components/ui'
-import { CollectionBanner } from '../components/collection/CollectionBanner'
-import { CollectionStats } from '../components/collection/CollectionStats'
-import { NFTCard } from '../components/nft/NFTCard'
-import { NFTGrid } from '../components/nft/NFTGrid'
-import { ActivityRow } from '../components/nft/ActivityRow'
-import { SortDropdown, type SortOption } from '../components/search/SortDropdown'
-import { nfts, collections, activities } from '../data/mock'
-import { cn } from '../lib/utils'
-import type { ActivityType } from '../types'
-
-const collectionTabs = [
-  { id: 'items', label: 'Items' },
-  { id: 'activity', label: 'Activity' },
-]
-
-const activityFilterOptions: { id: ActivityType | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'sale', label: 'Sales' },
-  { id: 'listing', label: 'Listings' },
-  { id: 'bid', label: 'Bids' },
-  { id: 'transfer', label: 'Transfers' },
-  { id: 'mint', label: 'Mints' },
-]
+import { useParams, Link } from 'react-router-dom'
+import { useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { ArrowLeft, ShieldCheck } from '@phosphor-icons/react'
+import { NFTCard } from '@/components/nft/NFTCard'
+import { collections, nfts } from '@/data/mock'
+import { formatCompact } from '@/lib/utils'
+import type { NFT } from '@/types'
 
 export default function CollectionPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id } = useParams()
   const navigate = useNavigate()
+  const col = collections.find((c) => c.id === id)
+  const colNfts = nfts.filter((n) => n.collection.id === id)
 
-  const collection = collections.find(c => c.id === id)
-  const [activeTab, setActiveTab] = useState('items')
-  const [sort, setSort] = useState<SortOption>('recently-listed')
-  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
+  const onNFT = useCallback((nft: NFT) => navigate(`/nft/${nft.id}`), [navigate])
 
-  const collectionNFTs = nfts.filter(n => n.collection.id === id)
-  const collectionActivities = activities.filter(a => a.nft.collection.id === id)
-
-  const sortedNFTs = [...collectionNFTs].sort((a, b) => {
-    switch (sort) {
-      case 'price-low-high':
-        return a.price - b.price
-      case 'price-high-low':
-        return b.price - a.price
-      case 'most-favorited':
-        return b.likes - a.likes
-      default:
-        return 0
-    }
-  })
-
-  const filteredActivities =
-    activityFilter === 'all'
-      ? collectionActivities
-      : collectionActivities.filter(a => a.type === activityFilter)
-
-  const handleNFTClick = useCallback(
-    (nft: { id: string }) => navigate(`/nft/${nft.id}`),
-    [navigate],
-  )
-
-  if (!collection) {
+  if (!col) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-24">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Collection not found
-        </h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          The collection you're looking for doesn't exist.
-        </p>
-        <Button variant="outline" onClick={() => navigate('/explore')}>
-          Back to Explore
-        </Button>
+      <div className="container mx-auto px-4 sm:px-6 py-20 text-center">
+        <p className="text-muted-foreground">Collection not found</p>
+        <Link to="/explore" className="text-primary text-sm mt-2 inline-block">Back to Explore</Link>
       </div>
     )
   }
 
-  return (
-    <div className="-mx-4 flex flex-col gap-6 pb-16 sm:-mx-6">
-      {/* Banner */}
-      <CollectionBanner collection={collection} />
+  const stats = [
+    { label: 'Floor', value: `${col.stats.floorPrice} ETH` },
+    { label: 'Volume', value: `${formatCompact(col.stats.totalVolume)} ETH` },
+    { label: 'Items', value: formatCompact(col.stats.items) },
+    { label: 'Owners', value: formatCompact(col.stats.owners) },
+    { label: 'Listed', value: `${col.stats.listedPercentage}%` },
+  ]
 
-      {/* Stats + tabs content */}
-      <div className="px-4 sm:px-6">
+  return (
+    <div>
+      {/* Banner */}
+      <div className="relative h-40 sm:h-56 bg-secondary overflow-hidden">
+        <img src={col.banner} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+      </div>
+
+      <div className="container mx-auto px-4 sm:px-6 -mt-10 relative z-10">
+        <Link to="/explore" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
+          <ArrowLeft size={16} /> Back
+        </Link>
+
+        {/* Collection info */}
+        <div className="flex items-center gap-4 mb-6">
+          <img src={col.image} alt={col.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-background object-cover" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold">{col.name}</h1>
+              {col.isVerified && <ShieldCheck size={18} weight="fill" className="text-primary" />}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">by {col.creator.displayName}</p>
+          </div>
+        </div>
+
         {/* Stats bar */}
-        <CollectionStats stats={collection.stats} className="mb-6" />
+        <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar border-y border-border py-3 mb-8">
+          {stats.map((s) => (
+            <div key={s.label} className="shrink-0">
+              <p className="font-mono text-sm font-bold tabular-nums">{s.value}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+            </div>
+          ))}
+          <div className="shrink-0">
+            <p className={`font-mono text-sm font-bold tabular-nums ${col.stats.sevenDayChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {col.stats.sevenDayChange >= 0 ? '+' : ''}{col.stats.sevenDayChange}%
+            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">7d</p>
+          </div>
+        </div>
 
         {/* Description */}
-        <p className="mb-6 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          {collection.description}
-        </p>
+        <p className="text-sm text-muted-foreground mb-8 max-w-2xl">{col.description}</p>
 
-        {/* Tabs */}
-        <Tabs tabs={collectionTabs} activeTab={activeTab} onChange={setActiveTab} />
-
-        <div className="mt-4">
-          {/* Items tab */}
-          {activeTab === 'items' && (
-            <div>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {sortedNFTs.length} {sortedNFTs.length === 1 ? 'item' : 'items'}
-                </span>
-                <SortDropdown value={sort} onChange={setSort} />
-              </div>
-              {sortedNFTs.length > 0 ? (
-                <NFTGrid>
-                  {sortedNFTs.map(nft => (
-                    <NFTCard key={nft.id} nft={nft} onClick={handleNFTClick} />
-                  ))}
-                </NFTGrid>
-              ) : (
-                <div className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                  No items in this collection
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Activity tab */}
-          {activeTab === 'activity' && (
-            <div>
-              {/* Activity type filter */}
-              <div className="mb-4 flex flex-wrap gap-2">
-                {activityFilterOptions.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setActivityFilter(opt.id)}
-                    className={cn(
-                      'rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150',
-                      activityFilter === opt.id
-                        ? 'bg-brand-600 text-white'
-                        : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-                {filteredActivities.length > 0 ? (
-                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {filteredActivities.map(act => (
-                      <ActivityRow key={act.id} activity={act} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    No activity found
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        {/* NFTs grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-16">
+          {colNfts.map((nft) => (
+            <NFTCard key={nft.id} nft={nft} onClick={onNFT} />
+          ))}
         </div>
       </div>
     </div>

@@ -1,17 +1,20 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Layout } from './components/layout/Layout'
-import Home from './pages/Home'
-import Explore from './pages/Explore'
-import NFTDetail from './pages/NFTDetail'
-import CollectionPage from './pages/CollectionPage'
-import Profile from './pages/Profile'
-import Create from './pages/Create'
-import CreateCollection from './pages/CreateCollection'
-import Settings from './pages/Settings'
-import Rankings from './pages/Rankings'
-import NotFound from './pages/NotFound'
+import { OneIdProvider } from '@explorills/one-id-auth'
+import { Layout } from '@/components/layout/Layout'
+import { getOneIdApiUrl } from '@/lib/utils'
+import { WALLETCONNECT_PROJECT_ID } from '@/lib/constants'
+import Home from '@/pages/Home'
+import Explore from '@/pages/Explore'
+import NFTDetail from '@/pages/NFTDetail'
+import CollectionPage from '@/pages/CollectionPage'
+import Profile from '@/pages/Profile'
+import Create from '@/pages/Create'
+import CreateCollection from '@/pages/CreateCollection'
+import Settings from '@/pages/Settings'
+import Rankings from '@/pages/Rankings'
+import NotFound from '@/pages/NotFound'
 
-export default function App() {
+function AppRoutes() {
   return (
     <BrowserRouter>
       <Layout>
@@ -29,5 +32,13 @@ export default function App() {
         </Routes>
       </Layout>
     </BrowserRouter>
+  )
+}
+
+export default function App() {
+  return (
+    <OneIdProvider apiUrl={getOneIdApiUrl()} walletConnectId={WALLETCONNECT_PROJECT_ID}>
+      <AppRoutes />
+    </OneIdProvider>
   )
 }
