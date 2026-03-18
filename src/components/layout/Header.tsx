@@ -66,26 +66,36 @@ export function Header() {
           : 'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
       }`}
     >
-      <div ref={headerRef} className="container mx-auto flex h-[68px] items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div ref={headerRef} className="container mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex items-center gap-[11px] shrink-0">
           <Link to="/">
-            <img ref={logoRef} src={logo} alt="ONE deal" className="h-13 w-13" />
+            <img
+              ref={logoRef}
+              src={logo}
+              alt="ONE deal"
+              className="w-[58px] h-[58px] sm:w-[66px] sm:h-[66px] object-contain"
+              width="66"
+              height="66"
+              loading="eager"
+            />
           </Link>
           {!hideTitle && (
-            <Link to="/">
-              <p
-                ref={titleRef}
-                role="heading"
-                aria-level={2}
-                className="text-[24px] font-bold tracking-tight whitespace-nowrap"
-              >
-                ONE <span className="text-primary drop-shadow-[0_0_8px_oklch(0.72_0.17_195/0.8)]">deal</span>
-              </p>
-            </Link>
-          )}
-          {!hideBadge && (
-            <div ref={badgeRef}>
-              <PoweredByExplNodes size="sm" />
+            <div className="flex flex-col gap-2">
+              <Link to="/">
+                <p
+                  ref={titleRef}
+                  role="heading"
+                  aria-level={2}
+                  className="text-[24px] sm:text-[26px] font-bold tracking-tight leading-none whitespace-nowrap"
+                >
+                  ONE <span className="text-primary drop-shadow-[0_0_8px_oklch(0.72_0.17_195/0.8)]">deal</span>
+                </p>
+              </Link>
+              {!hideBadge && (
+                <div ref={badgeRef}>
+                  <PoweredByExplNodes size="sm" />
+                </div>
+              )}
             </div>
           )}
         </div>
