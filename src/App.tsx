@@ -33,7 +33,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <OneIdProvider apiUrl={getOneIdApiUrl()} walletConnectId={WALLETCONNECT_PROJECT_ID}>
+    <OneIdProvider apiUrl={getOneIdApiUrl()} walletConnectId={WALLETCONNECT_PROJECT_ID} profilePath="/profile" platformColor="#06b6d4">
       <AppRoutes />
     </OneIdProvider>
   )
