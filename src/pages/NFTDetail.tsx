@@ -73,7 +73,6 @@ export default function NFTDetail() {
             )}
             <div className="flex gap-2 mt-4">
               <Button className="flex-1">Buy Now</Button>
-              <Button variant="outline" className="flex-1">Place Bid</Button>
             </div>
           </div>
 
@@ -126,7 +125,6 @@ export default function NFTDetail() {
                       <span className={`font-mono text-[10px] uppercase px-1.5 py-0.5 rounded ${
                         act.type === 'sale' ? 'bg-green-500/10 text-green-400' :
                         act.type === 'listing' ? 'bg-primary/10 text-primary' :
-                        act.type === 'bid' ? 'bg-yellow-500/10 text-yellow-400' :
                         'bg-secondary text-muted-foreground'
                       }`}>
                         {act.type}

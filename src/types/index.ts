@@ -40,7 +40,6 @@ export interface NFT {
   price: number
   currency: string
   lastSale?: number
-  highestBid?: number
   likes: number
   views: number
   traits: Trait[]
@@ -107,16 +106,6 @@ export interface PriceHistory {
   price: number
 }
 
-export interface Bid {
-  id: string
-  nftId: string
-  bidder: UserSummary
-  amount: number
-  currency: string
-  expiry: string
-  createdAt: string
-}
-
 export interface Activity {
   id: string
   type: ActivityType
@@ -131,7 +120,6 @@ export interface Activity {
 export type ActivityType =
   | 'sale'
   | 'listing'
-  | 'bid'
   | 'transfer'
   | 'mint'
   | 'cancel'
