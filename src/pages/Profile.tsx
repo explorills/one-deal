@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck, Copy, Check, PaperPlaneTilt, ArrowDown, X, ArrowSquareOut } from '@phosphor-icons/react'
+import { useOneId } from '@explorills/one-id-auth'
 import { NFTCard } from '@/components/nft/NFTCard'
 import { Button } from '@/components/ui/Button'
 import { users, nfts, activities } from '@/data/mock'
@@ -71,14 +72,43 @@ function SendModal({ nft, onClose }: { nft: NFT; onClose: () => void }) {
 export default function Profile() {
   const { address } = useParams()
   const navigate = useNavigate()
+  const { user: oneIdUser, apiUrl } = useOneId()
   const [tab, setTab] = useState<typeof TABS[number]>('Owned')
   const [copied, setCopied] = useState(false)
   const [sendingNft, setSendingNft] = useState<NFT | null>(null)
 
-  const user = users.find((u) => u.address === address)
   const onNFT = useCallback((nft: NFT) => navigate(`/nft/${nft.id}`), [navigate])
 
-  if (!user) {
+  // Check if viewing own profile (connected user's wallet address)
+  const isOwnProfile = !!oneIdUser && oneIdUser.wallets.some(
+    (w) => w.address.toLowerCase() === address?.toLowerCase()
+  )
+
+  // Resolve avatar URL from ONE ID data
+  const oneIdAvatar = oneIdUser?.avatarUrl
+    ? (oneIdUser.avatarUrl.startsWith('/') ? `${apiUrl}${oneIdUser.avatarUrl}` : oneIdUser.avatarUrl)
+    : oneIdUser ? `https://api.dicebear.com/9.x/rings/svg?seed=${oneIdUser.username}` : undefined
+
+  // Build profile from ONE ID (own) or mock data (other users)
+  const mockUser = users.find((u) => u.address === address)
+
+  const profile = isOwnProfile && oneIdUser ? {
+    address: address!,
+    displayName: oneIdUser.displayName,
+    avatar: oneIdAvatar!,
+    banner: undefined as string | undefined,
+    bio: undefined as string | undefined,
+    isVerified: false,
+  } : mockUser ? {
+    address: mockUser.address,
+    displayName: mockUser.displayName,
+    avatar: mockUser.avatar,
+    banner: mockUser.banner,
+    bio: mockUser.bio,
+    isVerified: mockUser.isVerified,
+  } : null
+
+  if (!profile) {
     return (
       <div className="container mx-auto px-4 sm:px-6 py-20 text-center">
         <p className="text-muted-foreground">User not found</p>
@@ -87,11 +117,19 @@ export default function Profile() {
     )
   }
 
-  const owned = nfts.filter((n) => n.owner.address === user.address)
-  const userActivity = activities.filter((a) => a.from.address === user.address || a.to?.address === user.address)
+  // For own profile, show showcase NFTs to demonstrate full UI
+  const owned = isOwnProfile ? nfts.slice(0, 8) : nfts.filter((n) => n.owner.address === profile.address)
+  const userActivity = isOwnProfile
+    ? activities
+    : activities.filter((a) => a.from.address === profile.address || a.to?.address === profile.address)
+
+  // Stats — showcase values for own profile, real mock data for others
+  const stats = mockUser && !isOwnProfile
+    ? { volume: mockUser.stats.totalVolume, sales: mockUser.stats.totalSales, owned: mockUser.stats.nftsOwned, followers: mockUser.stats.followers }
+    : { volume: 12.5, sales: 8, owned: owned.length, followers: 42 }
 
   const copyAddress = () => {
-    navigator.clipboard.writeText(user.address)
+    navigator.clipboard.writeText(profile.address)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -100,21 +138,21 @@ export default function Profile() {
     <div>
       {/* Banner */}
       <div className="h-32 sm:h-44 bg-secondary overflow-hidden">
-        {user.banner && <img src={user.banner} alt="" className="h-full w-full object-cover" />}
+        {profile.banner && <img src={profile.banner} alt="" className="h-full w-full object-cover" />}
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 -mt-10 relative z-10 pb-16">
         {/* Avatar + Info + Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div className="flex items-end gap-4">
-            <img src={user.avatar} alt={user.displayName} className="w-20 h-20 rounded-xl border-4 border-background object-cover" />
+            <img src={profile.avatar} alt={profile.displayName} className="w-20 h-20 rounded-xl border-4 border-background object-cover" />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold">{user.displayName}</h1>
-                {user.isVerified && <ShieldCheck size={18} weight="fill" className="text-primary" />}
+                <h1 className="text-xl font-bold">{profile.displayName}</h1>
+                {profile.isVerified && <ShieldCheck size={18} weight="fill" className="text-primary" />}
               </div>
               <button onClick={copyAddress} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-mono mt-0.5 cursor-pointer">
-                {formatAddress(user.address)}
+                {formatAddress(profile.address)}
                 {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
               </button>
             </div>
@@ -139,7 +177,7 @@ export default function Profile() {
               <ArrowDown size={15} /> Receive
             </Button>
             <a
-              href={`https://flarescan.com/address/${user.address}`}
+              href={`https://flarescan.com/address/${profile.address}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
@@ -149,15 +187,15 @@ export default function Profile() {
           </div>
         </div>
 
-        {user.bio && <p className="text-sm text-muted-foreground mb-6 max-w-lg">{user.bio}</p>}
+        {profile.bio && <p className="text-sm text-muted-foreground mb-6 max-w-lg">{profile.bio}</p>}
 
         {/* Stats inline */}
         <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar border-y border-border py-3 mb-8">
           {[
-            { label: 'Volume', value: `${formatCompact(user.stats.totalVolume)} ETH` },
-            { label: 'Sales', value: formatCompact(user.stats.totalSales) },
-            { label: 'Owned', value: formatCompact(user.stats.nftsOwned) },
-            { label: 'Followers', value: formatCompact(user.stats.followers) },
+            { label: 'Volume', value: `${formatCompact(stats.volume)} ETH` },
+            { label: 'Sales', value: formatCompact(stats.sales) },
+            { label: 'Owned', value: formatCompact(stats.owned) },
+            { label: 'Followers', value: formatCompact(stats.followers) },
           ].map((s) => (
             <div key={s.label} className="shrink-0">
               <p className="font-mono text-sm font-bold tabular-nums">{s.value}</p>
