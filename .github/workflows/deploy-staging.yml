@@ -24,7 +24,7 @@ jobs:
         PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
     - name: Update @explorills packages to latest
-      run: bun update --latest '@explorills/*'
+      run: bun update --latest @explorills/one-id-auth
       env:
         PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
