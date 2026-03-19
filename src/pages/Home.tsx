@@ -52,9 +52,6 @@ export default function Home() {
               <MagnifyingGlass size={18} weight="bold" />
               Explore
             </Button>
-            <Button variant="outline" size="lg" onClick={() => navigate('/create')}>
-              Create
-            </Button>
           </motion.div>
         </motion.div>
       </section>
@@ -135,7 +132,7 @@ export default function Home() {
             {[
               { icon: Lightning, step: '01', title: 'Connect', desc: 'Link your wallet via ONE ID to get started.' },
               { icon: MagnifyingGlass, step: '02', title: 'Discover', desc: 'Browse collections and find unique assets.' },
-              { icon: Cube, step: '03', title: 'Trade', desc: 'Buy, sell, and auction with instant settlement.' },
+              { icon: Cube, step: '03', title: 'Trade', desc: 'Buy, sell, and transfer with instant settlement.' },
             ].map((item) => (
               <div key={item.step} className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-3">

@@ -33,7 +33,7 @@ export const SORT_OPTIONS = [
 export const ECOSYSTEM_LINKS = [
   { name: 'MAIN', url: 'https://expl.one' },
   { name: 'EXPL Nodes', url: 'https://node.expl.one' },
-  { name: 'docs', url: 'https://docs.expl.one' },
+  { name: 'Documentation', url: 'https://docs.expl.one' },
   { name: 'pump', url: 'https://pump.expl.one' },
   { name: 'network', url: 'https://network.expl.one' },
   { name: 'world', url: 'https://world.expl.one' },
