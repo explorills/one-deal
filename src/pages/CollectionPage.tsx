@@ -39,7 +39,7 @@ export default function CollectionPage() {
     fetchCollection(chain, address)
       .then((data) => {
         setCollection(data.collection)
-        setActiveListings(data.activeListings)
+        setActiveListings(data.activeListings || 0)
       })
       .catch(() => setCollection(null))
       .finally(() => setLoading(false))
