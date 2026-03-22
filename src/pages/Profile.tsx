@@ -279,7 +279,7 @@ export default function Profile() {
 
           <div className="flex items-center gap-2">
             <a
-              href={`https://flare-explorer.flare.network/address/${address}`}
+              href={`https://flarescan.com/address/${address}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
