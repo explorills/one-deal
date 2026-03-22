@@ -2,25 +2,53 @@ import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowSquareOut } from '@phosphor-icons/react'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useReadContract } from 'wagmi'
 import { Button } from '@/components/ui/Button'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { fetchNft } from '@/lib/api'
 import type { ApiNft, ApiListing, ApiSale } from '@/lib/api'
 import { SUPPORTED_CHAINS } from '@/lib/constants'
+import { MARKETPLACE_ABI, ERC721_ABI, getMarketplaceAddress, getChainId } from '@/lib/contracts'
 import { formatAddress, timeAgo } from '@/lib/utils'
-import { formatEther } from 'viem'
+import { formatEther, parseEther } from 'viem'
 
 export default function NFTDetail() {
   const { chain, address, tokenId } = useParams()
+  const { address: userAddress, chainId: userChainId } = useAccount()
+  const { switchChain } = useSwitchChain()
   const [nft, setNft] = useState<ApiNft | null>(null)
   const [listing, setListing] = useState<ApiListing | null>(null)
   const [history, setHistory] = useState<ApiSale[]>([])
   const [loading, setLoading] = useState(true)
   const [metadata, setMetadata] = useState<any>(null)
 
+  // List modal state
+  const [showListModal, setShowListModal] = useState(false)
+  const [listPrice, setListPrice] = useState('')
+  const [txStatus, setTxStatus] = useState<'idle' | 'approving' | 'listing' | 'buying' | 'cancelling' | 'success' | 'error'>('idle')
+  const [txError, setTxError] = useState('')
+
   const chainConfig = chain ? SUPPORTED_CHAINS[chain as keyof typeof SUPPORTED_CHAINS] : null
   const symbol = chainConfig?.symbol || chain?.toUpperCase() || ''
+  const marketplaceAddr = chain ? getMarketplaceAddress(chain) : null
+  const requiredChainId = chain ? getChainId(chain) : null
+
+  const isOwner = userAddress && nft?.owner && userAddress.toLowerCase() === nft.owner.toLowerCase()
+  const isListed = !!listing
+  const isSeller = userAddress && listing?.seller && userAddress.toLowerCase() === listing.seller.toLowerCase()
+
+  const { writeContract, data: txHash, error: writeError, reset: resetWrite } = useWriteContract()
+  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
+
+  // Check approval status
+  const { data: approvedAddress } = useReadContract({
+    address: address as `0x${string}`,
+    abi: ERC721_ABI,
+    functionName: 'getApproved',
+    args: tokenId ? [BigInt(tokenId)] : undefined,
+    chainId: requiredChainId || undefined,
+  })
 
   useEffect(() => {
     if (!chain || !address || !tokenId) return
@@ -30,7 +58,6 @@ export default function NFTDetail() {
         setNft(data.nft)
         setListing(data.listing)
         setHistory(data.history)
-        // Parse metadata JSON if available
         if (data.nft.metadata_json) {
           try { setMetadata(JSON.parse(data.nft.metadata_json)) } catch {}
         }
@@ -38,6 +65,108 @@ export default function NFTDetail() {
       .catch(() => setNft(null))
       .finally(() => setLoading(false))
   }, [chain, address, tokenId])
+
+  // Handle tx confirmation
+  useEffect(() => {
+    if (txConfirmed) {
+      setTxStatus('success')
+      // Refresh data after a short delay
+      setTimeout(() => {
+        if (chain && address && tokenId) {
+          fetchNft(chain, address, tokenId).then((data) => {
+            setNft(data.nft)
+            setListing(data.listing)
+            setHistory(data.history)
+          })
+        }
+        setTxStatus('idle')
+        setShowListModal(false)
+      }, 2000)
+    }
+  }, [txConfirmed, chain, address, tokenId])
+
+  useEffect(() => {
+    if (writeError) {
+      setTxStatus('error')
+      setTxError(writeError.message?.includes('User rejected') ? 'Transaction rejected' : writeError.message || 'Transaction failed')
+    }
+  }, [writeError])
+
+  const ensureCorrectChain = () => {
+    if (requiredChainId && userChainId !== requiredChainId) {
+      switchChain({ chainId: requiredChainId })
+      return false
+    }
+    return true
+  }
+
+  const handleBuy = () => {
+    if (!marketplaceAddr || !address || !tokenId || !listing) return
+    if (!ensureCorrectChain()) return
+    setTxStatus('buying')
+    setTxError('')
+    resetWrite()
+    writeContract({
+      address: marketplaceAddr,
+      abi: MARKETPLACE_ABI,
+      functionName: 'buyItem',
+      args: [address as `0x${string}`, BigInt(tokenId)],
+      value: BigInt(listing.price),
+      chainId: requiredChainId || undefined,
+    })
+  }
+
+  const handleList = () => {
+    if (!marketplaceAddr || !address || !tokenId || !listPrice) return
+    if (!ensureCorrectChain()) return
+
+    const priceWei = parseEther(listPrice)
+
+    // Check if already approved
+    const isApproved = approvedAddress && approvedAddress.toString().toLowerCase() === marketplaceAddr.toLowerCase()
+
+    if (!isApproved) {
+      // Need to approve first
+      setTxStatus('approving')
+      setTxError('')
+      resetWrite()
+      writeContract({
+        address: address as `0x${string}`,
+        abi: ERC721_ABI,
+        functionName: 'approve',
+        args: [marketplaceAddr, BigInt(tokenId)],
+        chainId: requiredChainId || undefined,
+      })
+      // After approval, user needs to click List again
+      return
+    }
+
+    setTxStatus('listing')
+    setTxError('')
+    resetWrite()
+    writeContract({
+      address: marketplaceAddr,
+      abi: MARKETPLACE_ABI,
+      functionName: 'listItem',
+      args: [address as `0x${string}`, BigInt(tokenId), priceWei],
+      chainId: requiredChainId || undefined,
+    })
+  }
+
+  const handleCancel = () => {
+    if (!marketplaceAddr || !address || !tokenId) return
+    if (!ensureCorrectChain()) return
+    setTxStatus('cancelling')
+    setTxError('')
+    resetWrite()
+    writeContract({
+      address: marketplaceAddr,
+      abi: MARKETPLACE_ABI,
+      functionName: 'cancelListing',
+      args: [address as `0x${string}`, BigInt(tokenId)],
+      chainId: requiredChainId || undefined,
+    })
+  }
 
   if (loading) {
     return (
@@ -49,7 +178,6 @@ export default function NFTDetail() {
             <Skeleton className="w-32 h-4" />
             <Skeleton className="w-64 h-8" />
             <Skeleton className="w-full h-32 rounded-xl" />
-            <Skeleton className="w-full h-20 rounded-xl" />
           </div>
         </div>
       </div>
@@ -69,7 +197,6 @@ export default function NFTDetail() {
   let priceFormatted = ''
   try { if (price) priceFormatted = parseFloat(formatEther(BigInt(price))).toFixed(4) } catch {}
 
-  // Get traits from metadata
   const traits = metadata?.attributes || metadata?.traits || []
 
   return (
@@ -109,7 +236,6 @@ export default function NFTDetail() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="flex flex-col gap-5"
         >
-          {/* Collection link */}
           <div>
             <Link
               to={`/collection/${chain}/${address}`}
@@ -120,25 +246,99 @@ export default function NFTDetail() {
             <h1 className="text-2xl sm:text-3xl font-bold mt-1">{nft.name || `#${nft.token_id}`}</h1>
           </div>
 
-          {/* Price block */}
-          {listing && priceFormatted ? (
-            <div className="rounded-xl border border-border p-4 sm:p-5 bg-card">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Current Price</p>
-              <p className="text-3xl sm:text-4xl font-bold font-mono tabular-nums text-primary">
-                {priceFormatted} <span className="text-lg text-foreground">{symbol}</span>
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1 font-mono">
-                Seller: {formatAddress(listing.seller)}
-              </p>
-              <div className="flex gap-2 mt-4">
-                <Button className="flex-1">Buy Now</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border p-4 sm:p-5 bg-card">
-              <p className="text-sm text-muted-foreground">Not currently listed</p>
-            </div>
-          )}
+          {/* Price / Action block */}
+          <div className="rounded-xl border border-border p-4 sm:p-5 bg-card">
+            {isListed && priceFormatted ? (
+              <>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">Current Price</p>
+                <p className="text-3xl sm:text-4xl font-bold font-mono tabular-nums text-primary">
+                  {priceFormatted} <span className="text-lg text-foreground">{symbol}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+                  Seller: {formatAddress(listing!.seller)} &middot; 2.5% platform fee
+                </p>
+
+                {/* Status messages */}
+                {txStatus === 'success' && (
+                  <p className="text-sm text-green-400 mt-2">Transaction confirmed!</p>
+                )}
+                {txStatus === 'error' && (
+                  <p className="text-sm text-red-400 mt-2">{txError}</p>
+                )}
+
+                <div className="flex gap-2 mt-4">
+                  {isSeller ? (
+                    <Button
+                      className="flex-1"
+                      variant="outline"
+                      onClick={handleCancel}
+                      disabled={txStatus !== 'idle' && txStatus !== 'error'}
+                    >
+                      {txStatus === 'cancelling' ? 'Cancelling...' : 'Cancel Listing'}
+                    </Button>
+                  ) : userAddress ? (
+                    <Button
+                      className="flex-1"
+                      onClick={handleBuy}
+                      disabled={txStatus !== 'idle' && txStatus !== 'error'}
+                    >
+                      {txStatus === 'buying' ? 'Confirming...' : `Buy Now — ${priceFormatted} ${symbol}`}
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Connect wallet to buy</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">Not currently listed</p>
+
+                {txStatus === 'success' && (
+                  <p className="text-sm text-green-400 mb-2">Transaction confirmed!</p>
+                )}
+                {txStatus === 'error' && (
+                  <p className="text-sm text-red-400 mb-2">{txError}</p>
+                )}
+
+                {isOwner && !showListModal && (
+                  <Button size="sm" onClick={() => setShowListModal(true)}>
+                    List for Sale
+                  </Button>
+                )}
+
+                {isOwner && showListModal && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[11px] text-muted-foreground uppercase tracking-wider block mb-1">
+                        Price ({symbol})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={listPrice}
+                        onChange={(e) => setListPrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-sm font-mono placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        onClick={handleList}
+                        disabled={!listPrice || parseFloat(listPrice) <= 0 || (txStatus !== 'idle' && txStatus !== 'error')}
+                      >
+                        {txStatus === 'approving' ? 'Approving...' : txStatus === 'listing' ? 'Listing...' : 'List Item'}
+                      </Button>
+                      <Button variant="outline" onClick={() => { setShowListModal(false); setListPrice('') }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Owner */}
           {nft.owner && (
@@ -149,6 +349,7 @@ export default function NFTDetail() {
                 className="text-xs font-medium font-mono text-foreground hover:text-primary transition-colors"
               >
                 {formatAddress(nft.owner)}
+                {isOwner && <span className="text-primary ml-1">(you)</span>}
               </Link>
             </div>
           )}
@@ -161,7 +362,7 @@ export default function NFTDetail() {
             </div>
           )}
 
-          {/* Traits from metadata */}
+          {/* Traits */}
           {traits.length > 0 && (
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Traits</p>
