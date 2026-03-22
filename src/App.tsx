@@ -18,9 +18,6 @@ function AppRoutes() {
         projectName="deal"
         themeColor="oklch(0.72 0.17 195)"
         currentDomain="deal.expl.one"
-        navigationLinks={[
-          { label: "Explore", href: "/explore" },
-        ]}
       />
       <Layout>
         <Routes>
