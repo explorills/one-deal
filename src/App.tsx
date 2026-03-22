@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { OneIdProvider } from '@explorills/one-id-auth'
+import { OneIdProvider, EcosystemNavbar, EcosystemFooter } from '@explorills/one-ecosystem-ui'
 import { Layout } from '@/components/layout/Layout'
 import { getOneIdApiUrl } from '@/lib/utils'
 import { WALLETCONNECT_PROJECT_ID } from '@/lib/constants'
@@ -15,6 +15,16 @@ import NotFound from '@/pages/NotFound'
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <EcosystemNavbar
+        logo="/logo.png"
+        projectName="deal"
+        themeColor="oklch(0.72 0.17 195)"
+        currentDomain="deal.expl.one"
+        navigationLinks={[
+          { label: "Explore", href: "/explore" },
+          { label: "Rankings", href: "/rankings" },
+        ]}
+      />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -27,13 +37,14 @@ function AppRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
+      <EcosystemFooter themeColor="oklch(0.72 0.17 195)" />
     </BrowserRouter>
   )
 }
 
 export default function App() {
   return (
-    <OneIdProvider apiUrl={getOneIdApiUrl()} projectId={WALLETCONNECT_PROJECT_ID} profilePath="/profile" platformColor="#06b6d4">
+    <OneIdProvider apiUrl={getOneIdApiUrl()} projectId={WALLETCONNECT_PROJECT_ID} profilePath="/profile" platformColor="oklch(0.72 0.17 195)">
       <AppRoutes />
     </OneIdProvider>
   )
