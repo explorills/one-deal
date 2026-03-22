@@ -128,20 +128,27 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 sm:px-6 pb-2">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="shrink-0 w-56 sm:w-64">
-                <Skeleton className="aspect-[4/3] rounded-xl" />
-              </div>
-            ))
-          ) : collections.length > 0 ? (
-            collections.slice(0, 20).map((col, i) => (
-              <CollectionCard key={`${col.chain}-${col.address}`} collection={col} index={i} />
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground py-8">No collections yet</p>
-          )}
+        <div className="overflow-hidden px-4 sm:px-6 pb-2">
+          <div className="flex gap-3" style={{ animation: 'carousel-scroll 30s linear infinite', width: 'max-content' }}>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="shrink-0 w-56 sm:w-64">
+                  <Skeleton className="aspect-[4/3] rounded-xl" />
+                </div>
+              ))
+            ) : collections.length > 0 ? (
+              <>
+                {collections.slice(0, 20).map((col, i) => (
+                  <CollectionCard key={`a-${col.chain}-${col.address}`} collection={col} index={i} />
+                ))}
+                {collections.slice(0, 20).map((col, i) => (
+                  <CollectionCard key={`b-${col.chain}-${col.address}`} collection={col} index={i} />
+                ))}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8">No collections yet</p>
+            )}
+          </div>
         </div>
       </section>
 
