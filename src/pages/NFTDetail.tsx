@@ -57,8 +57,8 @@ export default function NFTDetail() {
     fetchNft(chain, address, tokenId)
       .then((data) => {
         setNft(data.nft)
-        setListing(data.listing)
-        setHistory(data.history)
+        setListing(data.listing || null)
+        setHistory(data.history || [])
         if (data.nft.metadata_json) {
           try { setMetadata(JSON.parse(data.nft.metadata_json)) } catch {}
         }
