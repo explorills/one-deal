@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
+import { getOptimizedImageUrl } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
 
 interface CollectionCardProps {
@@ -22,7 +23,7 @@ export function CollectionCard({ collection, index = 0 }: CollectionCardProps) {
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-secondary">
         {collection.image_url ? (
           <img
-            src={collection.image_url}
+            src={getOptimizedImageUrl(collection.image_url, 300)}
             alt={collection.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

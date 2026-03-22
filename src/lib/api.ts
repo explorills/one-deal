@@ -8,6 +8,21 @@ function getApiUrl(): string {
 
 const API = getApiUrl()
 
+/**
+ * Get an optimized image URL. For IPFS images served through img.deal.expl.one,
+ * routes through the backend image proxy which resizes + converts to WebP.
+ * This reduces image sizes by 60-80% for fast loading.
+ */
+export function getOptimizedImageUrl(imageUrl: string, width: number = 400): string {
+  if (!imageUrl) return ''
+  // Only optimize IPFS images served through our CDN
+  if (imageUrl.includes('img.deal.expl.one/ipfs/')) {
+    const ipfsPath = imageUrl.split('img.deal.expl.one/ipfs/')[1]
+    return `${API}/img/ipfs/${ipfsPath}?w=${width}&q=80`
+  }
+  return imageUrl
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`)
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`)

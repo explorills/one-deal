@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MagnifyingGlass, FunnelSimple } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
+import { getOptimizedImageUrl } from '@/lib/api'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { fetchCollections } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
@@ -101,7 +102,7 @@ export default function Explore() {
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-14 h-14 rounded-lg bg-secondary overflow-hidden shrink-0">
                   {col.image_url ? (
-                    <img src={col.image_url} alt={col.name} className="w-full h-full object-cover" />
+                    <img src={getOptimizedImageUrl(col.image_url, 200)} alt={col.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
                       {col.symbol?.[0] || '?'}

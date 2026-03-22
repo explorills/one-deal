@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
+import { getOptimizedImageUrl } from '@/lib/api'
 import type { ApiNft, ApiListing } from '@/lib/api'
 import { SUPPORTED_CHAINS } from '@/lib/constants'
 import { formatEther } from 'viem'
@@ -40,7 +41,7 @@ export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
       <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary">
         {imageUrl ? (
           <img
-            src={imageUrl}
+            src={getOptimizedImageUrl(imageUrl, 400)}
             alt={name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
