@@ -41,7 +41,7 @@ export function CollectionCard({ collection, index = 0 }: CollectionCardProps) {
         <div className="absolute bottom-3 left-3 right-3">
           <p className="text-sm font-semibold text-white leading-tight truncate">{collection.name || collection.symbol}</p>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-[11px] text-white/70 font-mono">{collection.total_supply} items</span>
+            <span className="text-[11px] text-white/70 font-mono">{collection.nfts_cached} items</span>
             <span className="text-[11px] text-white/70 font-mono">{collection.type}</span>
           </div>
         </div>

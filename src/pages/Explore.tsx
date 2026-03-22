@@ -118,18 +118,16 @@ export default function Explore() {
                 </div>
               </div>
 
-              {col.description && (
-                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{col.description}</p>
-              )}
+
 
               <div className="flex items-center gap-4 text-[11px]">
                 <div>
-                  <span className="font-mono font-bold tabular-nums text-foreground">{col.total_supply}</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">{col.nfts_cached}</span>
                   <span className="text-muted-foreground ml-1">items</span>
                 </div>
                 <div>
-                  <span className="font-mono font-bold tabular-nums text-foreground">{col.owner_count}</span>
-                  <span className="text-muted-foreground ml-1">owners</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">{col.holder_count}</span>
+                  <span className="text-muted-foreground ml-1">holders</span>
                 </div>
                 <div className="ml-auto">
                   <span className="font-mono text-muted-foreground">{col.address.slice(0, 6)}...{col.address.slice(-4)}</span>

@@ -13,14 +13,9 @@ const API = getApiUrl()
  * routes through the backend image proxy which resizes + converts to WebP.
  * This reduces image sizes by 60-80% for fast loading.
  */
-export function getOptimizedImageUrl(imageUrl: string, width: number = 400): string {
-  if (!imageUrl) return ''
-  // Only optimize IPFS images served through our CDN
-  if (imageUrl.includes('img.deal.expl.one/ipfs/')) {
-    const ipfsPath = imageUrl.split('img.deal.expl.one/ipfs/')[1]
-    return `${API}/img/ipfs/${ipfsPath}?w=${width}&q=80`
-  }
-  return imageUrl
+export function getOptimizedImageUrl(imageUrl: string, _width: number = 400): string {
+  // Images are now pre-cached as WebP on CloudFront — serve directly
+  return imageUrl || ''
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -38,15 +33,11 @@ export interface ApiCollection {
   symbol: string
   type: string
   total_supply: number
-  owner_count: number
-  floor_price: string
-  volume: string
+  holder_count: number
+  nfts_cached: number
   image_url: string
-  description: string
   status: string
   discovered_at: string
-  approved_at: string | null
-  last_indexed: string | null
 }
 
 export interface ApiNft {
@@ -95,11 +86,7 @@ export interface ApiSale {
 }
 
 export interface ApiStats {
-  collections: number
-  activeListings: number
-  totalSales: number
-  totalNFTs: number
-  volume: { flare: number; songbird: number }
+  stats: Record<string, { collections: number; nfts: number }>
 }
 
 // --- API functions ---

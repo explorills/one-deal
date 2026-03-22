@@ -137,8 +137,8 @@ export default function CollectionPage() {
 
         {/* Stats bar */}
         <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar border-y border-border py-3 mb-6">
-          <StatBox label="Items" value={collection.total_supply.toString()} />
-          <StatBox label="Owners" value={collection.owner_count.toString()} />
+          <StatBox label="Items" value={collection.nfts_cached.toString()} />
+          <StatBox label="Holders" value={collection.holder_count.toString()} />
           <StatBox label="Listed" value={activeListings.toString()} />
           {chainConfig && (
             <StatBox

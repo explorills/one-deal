@@ -106,10 +106,8 @@ export default function Home() {
             ))
           ) : (
             <>
-              <StatItem label="Collections" value={<AnimatedCounter value={stats?.collections || 0} />} />
-              <StatItem label="NFTs" value={<AnimatedCounter value={stats?.totalNFTs || 0} />} />
-              <StatItem label="Listed" value={<AnimatedCounter value={stats?.activeListings || 0} />} />
-              <StatItem label="Sales" value={<AnimatedCounter value={stats?.totalSales || 0} />} />
+              <StatItem label="Collections" value={<AnimatedCounter value={stats ? Object.values(stats.stats).reduce((a, s) => a + s.collections, 0) : 0} />} />
+              <StatItem label="NFTs" value={<AnimatedCounter value={stats ? Object.values(stats.stats).reduce((a, s) => a + s.nfts, 0) : 0} />} />
             </>
           )}
         </div>
