@@ -8,8 +8,6 @@ import Explore from '@/pages/Explore'
 import NFTDetail from '@/pages/NFTDetail'
 import CollectionPage from '@/pages/CollectionPage'
 import Profile from '@/pages/Profile'
-import Settings from '@/pages/Settings'
-import Rankings from '@/pages/Rankings'
 import NotFound from '@/pages/NotFound'
 
 function AppRoutes() {
@@ -22,18 +20,15 @@ function AppRoutes() {
         currentDomain="deal.expl.one"
         navigationLinks={[
           { label: "Explore", href: "/explore" },
-          { label: "Rankings", href: "/rankings" },
         ]}
       />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
-          <Route path="/nft/:id" element={<NFTDetail />} />
-          <Route path="/collection/:id" element={<CollectionPage />} />
+          <Route path="/nft/:chain/:address/:tokenId" element={<NFTDetail />} />
+          <Route path="/collection/:chain/:address" element={<CollectionPage />} />
           <Route path="/profile/:address" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/rankings" element={<Rankings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
