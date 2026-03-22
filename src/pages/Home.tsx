@@ -86,13 +86,16 @@ export default function Home() {
             The premier NFT marketplace for Flare and Songbird networks.
           </motion.p>
           <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" onClick={() => navigate('/explore')}>
-              <MagnifyingGlass size={18} weight="bold" />
-              Explore
+            <Button size="lg" disabled className="opacity-80 cursor-not-allowed">
+              COMING SOON...
             </Button>
           </motion.div>
         </motion.div>
       </section>
+
+      {/* ===== BLURRED COMING SOON OVERLAY ===== */}
+      <div className="relative select-none pointer-events-none" aria-hidden="true">
+        <div className="blur-[6px] opacity-50">
 
       {/* ===== LIVE STATS ===== */}
       <section className="border-y border-border">
@@ -243,6 +246,9 @@ export default function Home() {
           </Button>
         </div>
       </section>
+
+        </div>{/* end blur */}
+      </div>{/* end blur wrapper */}
     </div>
   )
 }
