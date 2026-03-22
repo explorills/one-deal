@@ -118,9 +118,3 @@ input:-webkit-autofill:focus {
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Auto-scrolling carousel */
-@keyframes carousel-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
