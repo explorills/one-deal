@@ -133,7 +133,7 @@ export default function Home() {
               </div>
             ))
           ) : collections.length > 0 ? (
-            collections.map((col, i) => (
+            collections.slice(0, 20).map((col, i) => (
               <CollectionCard key={`${col.chain}-${col.address}`} collection={col} index={i} />
             ))
           ) : (
