@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowSquareOut } from '@phosphor-icons/react'
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useReadContract } from 'wagmi'
+import { getOptimizedImageUrl } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -217,7 +218,7 @@ export default function NFTDetail() {
         >
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-secondary">
             {nft.image_url ? (
-              <img src={nft.image_url} alt={nft.name} className="h-full w-full object-cover" />
+              <img src={getOptimizedImageUrl(nft.image_url, 800)} alt={nft.name} className="h-full w-full object-cover" />
             ) : (
               <div className="h-full w-full flex items-center justify-center text-muted-foreground text-lg font-mono">
                 #{nft.token_id}
