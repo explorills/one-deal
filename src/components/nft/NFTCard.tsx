@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
@@ -14,6 +15,9 @@ interface NFTCardProps {
 
 export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
   const navigate = useNavigate()
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [shouldLoad, setShouldLoad] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const chain = nft?.chain || listing?.chain || ''
   const address = nft?.address || listing?.address || ''
@@ -25,31 +29,44 @@ export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
   const chainConfig = SUPPORTED_CHAINS[chain as keyof typeof SUPPORTED_CHAINS]
   const symbol = chainConfig?.symbol || chain.toUpperCase()
 
+  // Sequential reveal: delay setting src based on index
+  // Each card waits 120ms * index before starting to load its image
+  useEffect(() => {
+    const timer = setTimeout(() => setShouldLoad(true), index * 120)
+    return () => clearTimeout(timer)
+  }, [index])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: shouldLoad ? 1 : 0, y: shouldLoad ? 0 : 16 }}
       transition={{
         duration: 0.35,
-        delay: index * 0.06,
         ease: [0.22, 1, 0.36, 1],
       }}
       onClick={() => navigate(`/nft/${chain}/${address}/${tokenId}`)}
       className="group cursor-pointer"
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary">
-        {imageUrl ? (
+        {imageUrl && shouldLoad ? (
           <img
+            ref={imgRef}
             src={getOptimizedImageUrl(imageUrl, 400)}
             alt={name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            className={`h-full w-full object-cover transition-all duration-500 ${
+              imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+            } group-hover:scale-105`}
+            onLoad={() => setImageLoaded(true)}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; setImageLoaded(true) }}
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs font-mono">
-            No image
+            {shouldLoad ? 'No image' : ''}
           </div>
+        )}
+        {/* Shimmer loader while image loads */}
+        {shouldLoad && !imageLoaded && imageUrl && (
+          <div className="absolute inset-0 bg-secondary animate-pulse" />
         )}
         {/* Info overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 pt-8">
