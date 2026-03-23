@@ -5,8 +5,7 @@ import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { CollectionCard } from '@/components/nft/CollectionCard'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { fetchRecentlyActive, precacheCollectionNfts, getOptimizedImageUrl } from '@/lib/api'
-import { useBatchPreload } from '@/lib/useBatchPreload'
+import { fetchRecentlyActive, triggerPrepare } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
 
 const ease = [0.22, 1, 0.36, 1] as const
@@ -20,17 +19,18 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Fetch both chains in parallel — backend serves instantly from disk
     Promise.all([
-      fetchRecentlyActive('flare', 12).then(setFlareCollections),
-      fetchRecentlyActive('songbird', 12).then(setSongbirdCollections),
+      fetchRecentlyActive('flare', 12).then(setFlareCollections).catch(() => {}),
+      fetchRecentlyActive('songbird', 12).then(setSongbirdCollections).catch(() => {}),
     ]).finally(() => setLoading(false))
   }, [])
 
-  // Pre-cache first 24 NFTs of each visible collection
+  // Trigger backend to prepare upcoming content (NFTs + cover images)
   useEffect(() => {
     if (loading) return
     ;[...flareCollections, ...songbirdCollections].forEach((col) => {
-      precacheCollectionNfts(col.chain, col.address, 24)
+      triggerPrepare(col.chain, col.address)
     })
   }, [loading, flareCollections, songbirdCollections])
 
@@ -60,7 +60,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Recently Active */}
+      {/* Recently Active — render immediately, images load individually */}
       <section className="py-10 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 mb-8">
           <h2 className="text-xl sm:text-2xl font-bold">Recently Active</h2>
@@ -79,11 +79,6 @@ export default function Home() {
 function ChainCarousel({ label, chain, collections, loading }: {
   label: string; chain: string; collections: ApiCollection[]; loading: boolean
 }) {
-  // Preload ALL collection cover images before showing any cards
-  const imageUrls = collections.map((c) => c.image_url ? getOptimizedImageUrl(c.image_url, 300) : '')
-  const imagesReady = useBatchPreload(imageUrls)
-  const showCards = !loading && imagesReady
-
   return (
     <div>
       <div className="container mx-auto px-4 sm:px-6">
@@ -95,7 +90,7 @@ function ChainCarousel({ label, chain, collections, loading }: {
         </div>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 sm:px-6 pb-2">
-        {!showCards ? (
+        {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="shrink-0 w-56 sm:w-64">
               <Skeleton className="aspect-[4/3] rounded-xl" />

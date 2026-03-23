@@ -4,8 +4,7 @@ import { ArrowLeft, CircleNotch } from '@phosphor-icons/react'
 import { NFTCard } from '@/components/nft/NFTCard'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { fetchCollection, fetchCollectionNfts, precacheNextBatch } from '@/lib/api'
-import { useLoadMoreBatch } from '@/lib/useBatchPreload'
+import { fetchCollection, fetchCollectionNfts, triggerPrepare } from '@/lib/api'
 import type { ApiCollection, ApiNft } from '@/lib/api'
 import { SUPPORTED_CHAINS } from '@/lib/constants'
 import { formatAddress } from '@/lib/utils'
@@ -13,8 +12,6 @@ import { formatAddress } from '@/lib/utils'
 const BATCH_SIZE = 24
 
 const SORT_OPTIONS = [
-  { value: 'recent-active', label: 'Recently Active' },
-  { value: 'least-active', label: 'Least Active' },
   { value: 'token_id', label: 'Token ID: Low to High' },
   { value: 'token-id-desc', label: 'Token ID: High to Low' },
   { value: 'floor-asc', label: 'Floor: Low to High', disabled: true },
@@ -27,21 +24,14 @@ export default function CollectionPage() {
   const { chain, address } = useParams()
   const [collection, setCollection] = useState<ApiCollection | null>(null)
   const [activeListings, setActiveListings] = useState(0)
+  const [nfts, setNfts] = useState<ApiNft[]>([])
+  const [total, setTotal] = useState(0)
   const [sort, setSort] = useState('token_id')
   const [loading, setLoading] = useState(true)
+  const [nftsLoading, setNftsLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const chainConfig = SUPPORTED_CHAINS[chain as keyof typeof SUPPORTED_CHAINS]
-
-  // Batch loader for NFTs — handles preloading + domino delivery
-  const fetchBatch = useCallback(
-    async (offset: number) => {
-      if (!chain || !address) return { items: [] as ApiNft[], total: 0 }
-      const data = await fetchCollectionNfts(chain, address, sort, BATCH_SIZE, offset)
-      return { items: data.nfts, total: data.total }
-    },
-    [chain, address, sort],
-  )
-  const { items: nfts, total, loading: nftsLoading, initialLoading, hasMore, loadInitial, loadMore } = useLoadMoreBatch(fetchBatch, BATCH_SIZE)
 
   // Fetch collection info
   useEffect(() => {
@@ -54,19 +44,38 @@ export default function CollectionPage() {
       })
       .catch(() => setCollection(null))
       .finally(() => setLoading(false))
+
+    // Trigger backend to prepare this collection's data
+    triggerPrepare(chain, address)
   }, [chain, address])
 
-  // Load NFTs when sort changes
-  useEffect(() => { loadInitial() }, [loadInitial])
-
-  // Pre-cache other sort views
+  // Fetch NFTs — instant from backend disk
   useEffect(() => {
-    if (initialLoading || !chain || !address) return
-    for (const opt of SORT_OPTIONS) {
-      if (opt.disabled || opt.value === sort) continue
-      precacheNextBatch(chain, address, opt.value, BATCH_SIZE, 0)
-    }
-  }, [initialLoading, chain, address, sort])
+    if (!chain || !address) return
+    setNftsLoading(true)
+    setNfts([])
+    fetchCollectionNfts(chain, address, sort, BATCH_SIZE, 0)
+      .then((data) => {
+        setNfts(data.nfts)
+        setTotal(data.total)
+      })
+      .catch(() => { setNfts([]); setTotal(0) })
+      .finally(() => setNftsLoading(false))
+  }, [chain, address, sort])
+
+  // Load more
+  const loadMore = useCallback(async () => {
+    if (!chain || !address || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const data = await fetchCollectionNfts(chain, address, sort, BATCH_SIZE, nfts.length)
+      setNfts((prev) => [...prev, ...data.nfts])
+      setTotal(data.total)
+    } catch {}
+    setLoadingMore(false)
+  }, [chain, address, sort, nfts.length, loadingMore])
+
+  const hasMore = nfts.length < total
 
   if (loading) {
     return (
@@ -114,15 +123,7 @@ export default function CollectionPage() {
 
         {/* Collection info */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-background bg-secondary overflow-hidden shrink-0">
-            {collection.image_url ? (
-              <img src={collection.image_url} alt={collection.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground/30">
-                {collection.symbol?.[0] || '?'}
-              </div>
-            )}
-          </div>
+          <CollectionAvatar collection={collection} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold truncate">{collection.name || collection.symbol}</h1>
@@ -161,7 +162,7 @@ export default function CollectionPage() {
         {/* Sort + NFT count */}
         <div className="flex items-center justify-between mb-5">
           <span className="text-xs text-muted-foreground font-mono">
-            {initialLoading ? '...' : `${nfts.length} of ${total} NFTs`}
+            {nftsLoading ? '...' : `${nfts.length} of ${total} NFTs`}
           </span>
           <select
             value={sort}
@@ -176,8 +177,8 @@ export default function CollectionPage() {
           </select>
         </div>
 
-        {/* NFTs grid — batch preloaded, domino reveal */}
-        {initialLoading ? (
+        {/* NFTs grid — render immediately, images load individually */}
+        {nftsLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-16">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-xl" />
@@ -198,12 +199,12 @@ export default function CollectionPage() {
               <div className="flex items-center justify-center gap-3 pb-16">
                 <button
                   onClick={loadMore}
-                  disabled={nftsLoading}
+                  disabled={loadingMore}
                   className="px-6 py-2.5 rounded-lg bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Load More ({total - nfts.length} remaining)
                 </button>
-                {nftsLoading && (
+                {loadingMore && (
                   <CircleNotch size={20} className="animate-spin text-primary" />
                 )}
               </div>
@@ -213,6 +214,31 @@ export default function CollectionPage() {
           <p className="text-sm text-muted-foreground text-center py-12">No NFTs found for this collection</p>
         )}
       </div>
+    </div>
+  )
+}
+
+function CollectionAvatar({ collection }: { collection: ApiCollection }) {
+  const [imgLoaded, setImgLoaded] = useState(false)
+
+  return (
+    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-background bg-secondary overflow-hidden shrink-0 relative">
+      {collection.image_url ? (
+        <>
+          {!imgLoaded && <div className="absolute inset-0 skeleton" />}
+          <img
+            src={collection.image_url}
+            alt={collection.name}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </>
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground/30">
+          {collection.symbol?.[0] || '?'}
+        </div>
+      )}
     </div>
   )
 }

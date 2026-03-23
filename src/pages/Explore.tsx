@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MagnifyingGlass, FunnelSimple, CircleNotch } from '@phosphor-icons/react'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
-import { getOptimizedImageUrl, searchCollections, fetchStats } from '@/lib/api'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { fetchRecentlyActive, fetchCollections, precacheCollectionNfts } from '@/lib/api'
-import { useBatchPreload } from '@/lib/useBatchPreload'
+import { fetchRecentlyActive, fetchCollections, searchCollections, fetchStats, triggerPrepare } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
 
 const BATCH_SIZE = 24
@@ -34,7 +32,7 @@ export default function Explore() {
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
 
-  // Fetch total collection count
+  // Fetch total count
   useEffect(() => {
     fetchStats().then((s) => {
       const stats = s.stats
@@ -43,7 +41,7 @@ export default function Explore() {
     }).catch(() => {})
   }, [chainFilter])
 
-  // Initial load
+  // Initial load — backend serves instantly from disk
   useEffect(() => {
     setLoading(true)
     setVisibleCount(BATCH_SIZE)
@@ -66,11 +64,11 @@ export default function Explore() {
     }
   }, [chainFilter])
 
-  // Pre-cache first 24 NFTs of visible collections
+  // Trigger backend to prepare visible collections
   useEffect(() => {
     if (loading) return
     collections.slice(0, visibleCount).forEach((col) => {
-      precacheCollectionNfts(col.chain, col.address, 24)
+      triggerPrepare(col.chain, col.address)
     })
   }, [loading, collections, visibleCount])
 
@@ -106,7 +104,7 @@ export default function Explore() {
         setAllCollections(full)
         setCollections(full)
         setVisibleCount(visibleCount + BATCH_SIZE)
-      } catch { /* ignore */ }
+      } catch {}
     } else {
       setVisibleCount((prev) => prev + BATCH_SIZE)
     }
@@ -115,11 +113,6 @@ export default function Explore() {
 
   const visible = collections.slice(0, visibleCount)
   const hasMore = query.length < SEARCH_MIN_CHARS && (collections.length > visibleCount || allCollections.length <= BATCH_SIZE)
-
-  // Batch preload images for visible cards
-  const imageUrls = visible.map((c) => c.image_url ? getOptimizedImageUrl(c.image_url, 200) : '')
-  const imagesReady = useBatchPreload(imageUrls)
-  const showCards = !loading && !searching && imagesReady
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -162,8 +155,8 @@ export default function Explore() {
         </span>
       </div>
 
-      {/* Grid */}
-      {!showCards ? (
+      {/* Grid — render immediately, no batch preloading */}
+      {loading || searching ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border p-4 space-y-3">
@@ -180,44 +173,7 @@ export default function Explore() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((col, i) => (
-              <div
-                key={`${col.chain}-${col.address}`}
-                className="domino-card group rounded-xl border border-border p-4 hover:border-primary/30 transition-all cursor-pointer hover:shadow-[0_0_20px_oklch(0.72_0.17_195/0.08)]"
-                style={{ animationDelay: `${(i % BATCH_SIZE) * DOMINO_DELAY}ms` }}
-                onClick={() => navigate(`/collection/${col.chain}/${col.address}`)}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-14 h-14 rounded-lg bg-secondary overflow-hidden shrink-0">
-                    {col.image_url ? (
-                      <img src={getOptimizedImageUrl(col.image_url, 200)} alt={col.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
-                        {col.symbol?.[0] || '?'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm truncate">{col.name || col.symbol || 'Unknown'}</h3>
-                      <NetworkBadge chain={col.chain} />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{col.symbol} &middot; {col.type}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-[11px]">
-                  <div>
-                    <span className="font-mono font-bold tabular-nums text-foreground">{col.nfts_cached}</span>
-                    <span className="text-muted-foreground ml-1">items</span>
-                  </div>
-                  <div>
-                    <span className="font-mono font-bold tabular-nums text-foreground">{col.holder_count}</span>
-                    <span className="text-muted-foreground ml-1">holders</span>
-                  </div>
-                  <div className="ml-auto">
-                    <span className="font-mono text-muted-foreground">{col.address.slice(0, 6)}...{col.address.slice(-4)}</span>
-                  </div>
-                </div>
-              </div>
+              <ExploreCard key={`${col.chain}-${col.address}`} col={col} index={i} onClick={() => navigate(`/collection/${col.chain}/${col.address}`)} />
             ))}
           </div>
 
@@ -243,6 +199,61 @@ export default function Explore() {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Explore page card — image loads independently with fade-in */
+function ExploreCard({ col, index, onClick }: { col: ApiCollection; index: number; onClick: () => void }) {
+  const [imgLoaded, setImgLoaded] = useState(false)
+
+  return (
+    <div
+      className="domino-card group rounded-xl border border-border p-4 hover:border-primary/30 transition-all cursor-pointer hover:shadow-[0_0_20px_oklch(0.72_0.17_195/0.08)]"
+      style={{ animationDelay: `${(index % BATCH_SIZE) * DOMINO_DELAY}ms` }}
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-14 h-14 rounded-lg bg-secondary overflow-hidden shrink-0 relative">
+          {col.image_url ? (
+            <>
+              {!imgLoaded && <div className="absolute inset-0 skeleton" />}
+              <img
+                src={col.image_url}
+                alt={col.name}
+                loading="lazy"
+                onLoad={() => setImgLoaded(true)}
+                onError={() => setImgLoaded(true)}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
+              {col.symbol?.[0] || '?'}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm truncate">{col.name || col.symbol || 'Unknown'}</h3>
+            <NetworkBadge chain={col.chain} />
+          </div>
+          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{col.symbol} &middot; {col.type}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-[11px]">
+        <div>
+          <span className="font-mono font-bold tabular-nums text-foreground">{col.nfts_cached}</span>
+          <span className="text-muted-foreground ml-1">items</span>
+        </div>
+        <div>
+          <span className="font-mono font-bold tabular-nums text-foreground">{col.holder_count}</span>
+          <span className="text-muted-foreground ml-1">holders</span>
+        </div>
+        <div className="ml-auto">
+          <span className="font-mono text-muted-foreground">{col.address.slice(0, 6)}...{col.address.slice(-4)}</span>
+        </div>
+      </div>
     </div>
   )
 }

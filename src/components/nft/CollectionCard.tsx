@@ -1,6 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
-import { getOptimizedImageUrl } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
 
 const DOMINO_DELAY = 80
@@ -10,12 +10,9 @@ interface CollectionCardProps {
   index?: number
 }
 
-/**
- * Collection carousel card with pure CSS domino animation.
- * Parent must ensure all images are preloaded before rendering.
- */
 export function CollectionCard({ collection, index = 0 }: CollectionCardProps) {
   const navigate = useNavigate()
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   return (
     <div
@@ -25,11 +22,19 @@ export function CollectionCard({ collection, index = 0 }: CollectionCardProps) {
     >
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-secondary">
         {collection.image_url ? (
-          <img
-            src={getOptimizedImageUrl(collection.image_url, 300)}
-            alt={collection.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            {!imgLoaded && <div className="absolute inset-0 skeleton" />}
+            <img
+              src={collection.image_url}
+              alt={collection.name}
+              loading="lazy"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(true)}
+              className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                imgLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          </>
         ) : (
           <div className="h-full w-full flex items-center justify-center">
             <span className="text-3xl font-bold text-muted-foreground/30">{collection.symbol || '?'}</span>

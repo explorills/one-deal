@@ -1,11 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
-import { getOptimizedImageUrl } from '@/lib/api'
 import type { ApiNft, ApiListing } from '@/lib/api'
 import { SUPPORTED_CHAINS } from '@/lib/constants'
 import { formatEther } from 'viem'
 
-const DOMINO_DELAY = 80 // ms between each card in the chain
+const DOMINO_DELAY = 80
 
 interface NFTCardProps {
   nft?: ApiNft
@@ -13,13 +13,9 @@ interface NFTCardProps {
   index?: number
 }
 
-/**
- * NFT card with pure CSS domino animation.
- * Parent must ensure all images are preloaded before rendering.
- * Each card uses transition-delay based on index for sequential reveal.
- */
 export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
   const navigate = useNavigate()
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   const chain = nft?.chain || listing?.chain || ''
   const address = nft?.address || listing?.address || ''
@@ -35,17 +31,23 @@ export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
     <div
       onClick={() => navigate(`/nft/${chain}/${address}/${tokenId}`)}
       className="group cursor-pointer domino-card"
-      style={{
-        animationDelay: `${index * DOMINO_DELAY}ms`,
-      }}
+      style={{ animationDelay: `${index * DOMINO_DELAY}ms` }}
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary">
         {imageUrl ? (
-          <img
-            src={getOptimizedImageUrl(imageUrl, 400)}
-            alt={name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          <>
+            {!imgLoaded && <div className="absolute inset-0 skeleton rounded-xl" />}
+            <img
+              src={imageUrl}
+              alt={name}
+              loading="lazy"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(true)}
+              className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                imgLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          </>
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs font-mono">
             No image

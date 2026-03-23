@@ -9,34 +9,25 @@ function getApiUrl(): string {
 const API = getApiUrl()
 
 // ==========================================
-// Frontend Response Cache
-// Survives React navigation — data persists across page changes
+// Navigation Cache — survives page changes, simple Map
 // ==========================================
 
-const responseCache = new Map<string, { data: any; expires: number }>()
+const navCache = new Map<string, { data: any; ts: number }>()
+const NAV_TTL = 60_000 // 1 min — just for back/forward navigation speed
 
-function getCachedResponse<T>(key: string): T | null {
-  const entry = responseCache.get(key)
-  if (entry && Date.now() < entry.expires) return entry.data as T
-  if (entry) responseCache.delete(key)
+function fromCache<T>(key: string): T | null {
+  const entry = navCache.get(key)
+  if (entry && Date.now() - entry.ts < NAV_TTL) return entry.data as T
   return null
 }
 
-function setCachedResponse(key: string, data: any, ttlMs: number): void {
-  responseCache.set(key, { data, expires: Date.now() + ttlMs })
+function toCache(key: string, data: any): void {
+  navCache.set(key, { data, ts: Date.now() })
 }
-
-const CACHE_5M = 5 * 60_000
-const CACHE_2M = 2 * 60_000
-const CACHE_1M = 60_000
 
 // ==========================================
 // API Helpers
 // ==========================================
-
-export function getOptimizedImageUrl(imageUrl: string, _width: number = 400): string {
-  return imageUrl || ''
-}
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`)
@@ -44,11 +35,12 @@ async function get<T>(path: string): Promise<T> {
   return res.json()
 }
 
-async function cachedGet<T>(path: string, ttlMs: number): Promise<T> {
-  const cached = getCachedResponse<T>(path)
+/** Fetch with navigation cache — serves stale instantly, fetches fresh in background */
+async function cachedGet<T>(path: string): Promise<T> {
+  const cached = fromCache<T>(path)
   if (cached) return cached
   const data = await get<T>(path)
-  setCachedResponse(path, data, ttlMs)
+  toCache(path, data)
   return data
 }
 
@@ -118,31 +110,16 @@ export interface ApiStats {
 }
 
 // ==========================================
-// API Functions
+// API Functions — all serve instantly from backend disk
 // ==========================================
 
 export async function fetchStats(): Promise<ApiStats> {
-  return cachedGet<ApiStats>('/stats', CACHE_5M)
+  return cachedGet<ApiStats>('/stats')
 }
 
-/** Recently active collections for landing page (sorted by recent transfers) */
 export async function fetchRecentlyActive(chain: string, limit: number = 12): Promise<ApiCollection[]> {
-  const path = `/recently-active/${chain}?limit=${limit}`
-  const cacheKey = `ra:${path}`
-  const cached = getCachedResponse<ApiCollection[]>(cacheKey)
-  if (cached) return cached
-
-  try {
-    const data = await get<{ collections: ApiCollection[] }>(path)
-    setCachedResponse(cacheKey, data.collections, CACHE_2M)
-    return data.collections
-  } catch {
-    // Fallback until backend endpoint is built — use top collections by holders
-    const cols = await fetchCollections(chain)
-    const result = cols.slice(0, limit)
-    setCachedResponse(cacheKey, result, CACHE_2M)
-    return result
-  }
+  const data = await cachedGet<{ collections: ApiCollection[] }>(`/recently-active/${chain}?limit=${limit}`)
+  return data.collections
 }
 
 export async function fetchCollections(chain?: string, search?: string): Promise<ApiCollection[]> {
@@ -150,13 +127,12 @@ export async function fetchCollections(chain?: string, search?: string): Promise
   if (chain) params.set('chain', chain)
   if (search) params.set('search', search)
   const qs = params.toString()
-  const path = `/collections${qs ? '?' + qs : ''}`
-  const data = await cachedGet<{ collections: ApiCollection[] }>(path, search ? CACHE_1M : CACHE_5M)
+  const data = await cachedGet<{ collections: ApiCollection[] }>(`/collections${qs ? '?' + qs : ''}`)
   return data.collections
 }
 
 export async function fetchCollection(chain: string, address: string): Promise<{ collection: ApiCollection; activeListings: number }> {
-  return cachedGet(`/collections/${chain}/${address}`, CACHE_2M)
+  return cachedGet(`/collections/${chain}/${address}`)
 }
 
 export async function fetchCollectionNfts(
@@ -170,8 +146,7 @@ export async function fetchCollectionNfts(
   if (sort) params.set('sort', sort)
   params.set('limit', String(limit))
   params.set('offset', String(offset))
-  const path = `/nfts/${chain}/${address}?${params.toString()}`
-  return cachedGet(path, CACHE_2M)
+  return cachedGet(`/nfts/${chain}/${address}?${params.toString()}`)
 }
 
 export async function fetchNft(
@@ -179,7 +154,7 @@ export async function fetchNft(
   address: string,
   tokenId: string,
 ): Promise<{ nft: ApiNft; listing: ApiListing | null; history: ApiSale[] }> {
-  return cachedGet(`/nft/${chain}/${address}/${tokenId}`, CACHE_2M)
+  return cachedGet(`/nft/${chain}/${address}/${tokenId}`)
 }
 
 export async function fetchListings(chain?: string, limit?: number): Promise<ApiListing[]> {
@@ -187,29 +162,25 @@ export async function fetchListings(chain?: string, limit?: number): Promise<Api
   if (chain) params.set('chain', chain)
   if (limit) params.set('limit', String(limit))
   const qs = params.toString()
-  const data = await cachedGet<{ listings: ApiListing[] }>(`/listings${qs ? '?' + qs : ''}`, CACHE_1M)
+  const data = await cachedGet<{ listings: ApiListing[] }>(`/listings${qs ? '?' + qs : ''}`)
   return data.listings
 }
 
 export async function fetchUserHoldings(address: string): Promise<ApiNft[]> {
-  const data = await cachedGet<{ nfts: ApiNft[] }>(`/user/${address}/holdings`, CACHE_1M)
+  const data = await cachedGet<{ nfts: ApiNft[] }>(`/user/${address}/holdings`)
   return data.nfts
 }
 
 export async function searchCollections(q: string): Promise<ApiCollection[]> {
   if (q.length < 3) return []
-  const data = await cachedGet<{ collections: ApiCollection[] }>(`/search?q=${encodeURIComponent(q)}`, CACHE_1M)
+  const data = await cachedGet<{ collections: ApiCollection[] }>(`/search?q=${encodeURIComponent(q)}`)
   return data.collections
 }
 
 // ==========================================
-// Pre-cache helpers (fire-and-forget, fills frontend cache)
+// Frontend triggers backend to prepare upcoming content
 // ==========================================
 
-export function precacheCollectionNfts(chain: string, address: string, limit: number = 24): void {
-  fetchCollectionNfts(chain, address, 'token_id', limit, 0).catch(() => {})
-}
-
-export function precacheNextBatch(chain: string, address: string, sort: string, limit: number, offset: number): void {
-  fetchCollectionNfts(chain, address, sort, limit, offset).catch(() => {})
+export function triggerPrepare(chain: string, address: string): void {
+  fetch(`${API}/prepare/${chain}/${address}`, { method: 'POST' }).catch(() => {})
 }
