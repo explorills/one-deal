@@ -15,7 +15,6 @@ interface NFTCardProps {
 export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
   const navigate = useNavigate()
 
-  // Support rendering from either NFT or listing data
   const chain = nft?.chain || listing?.chain || ''
   const address = nft?.address || listing?.address || ''
   const tokenId = nft?.token_id || listing?.token_id || ''
@@ -26,16 +25,16 @@ export function NFTCard({ nft, listing, index = 0 }: NFTCardProps) {
   const chainConfig = SUPPORTED_CHAINS[chain as keyof typeof SUPPORTED_CHAINS]
   const symbol = chainConfig?.symbol || chain.toUpperCase()
 
-  const handleClick = () => {
-    navigate(`/nft/${chain}/${address}/${tokenId}`)
-  }
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
-      onClick={handleClick}
+      transition={{
+        duration: 0.35,
+        delay: index * 0.06,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      onClick={() => navigate(`/nft/${chain}/${address}/${tokenId}`)}
       className="group cursor-pointer"
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-secondary">

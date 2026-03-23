@@ -1,22 +1,26 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft } from '@phosphor-icons/react'
 import { NFTCard } from '@/components/nft/NFTCard'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { fetchCollection, fetchCollectionNfts } from '@/lib/api'
+import { fetchCollection, fetchCollectionNfts, precacheNextBatch } from '@/lib/api'
 import type { ApiCollection, ApiNft } from '@/lib/api'
 import { SUPPORTED_CHAINS } from '@/lib/constants'
 import { formatAddress } from '@/lib/utils'
 
+const BATCH_SIZE = 24
+
 const SORT_OPTIONS = [
-  { value: 'token_id', label: 'Token ID' },
-  { value: 'price-low', label: 'Price: Low to High' },
-  { value: 'price-high', label: 'Price: High to Low' },
-  { value: 'recent', label: 'Recently Listed' },
-  { value: 'name-az', label: 'Name: A to Z' },
-  { value: 'name-za', label: 'Name: Z to A' },
+  { value: 'recent-active', label: 'Recently Active' },
+  { value: 'least-active', label: 'Least Active' },
+  { value: 'token_id', label: 'Token ID: Low to High' },
+  { value: 'token-id-desc', label: 'Token ID: High to Low' },
+  { value: 'floor-asc', label: 'Floor: Low to High', disabled: true },
+  { value: 'floor-desc', label: 'Floor: High to Low', disabled: true },
+  { value: 'recently-listed', label: 'Recently Listed', disabled: true },
+  { value: 'oldest-listed', label: 'Oldest Listed', disabled: true },
 ]
 
 export default function CollectionPage() {
@@ -28,6 +32,7 @@ export default function CollectionPage() {
   const [sort, setSort] = useState('token_id')
   const [loading, setLoading] = useState(true)
   const [nftsLoading, setNftsLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [offset, setOffset] = useState(0)
 
   const chainConfig = SUPPORTED_CHAINS[chain as keyof typeof SUPPORTED_CHAINS]
@@ -45,12 +50,12 @@ export default function CollectionPage() {
       .finally(() => setLoading(false))
   }, [chain, address])
 
-  // Fetch NFTs
+  // Fetch NFTs (resets on sort change)
   useEffect(() => {
     if (!chain || !address) return
     setNftsLoading(true)
     setOffset(0)
-    fetchCollectionNfts(chain, address, sort, 50, 0)
+    fetchCollectionNfts(chain, address, sort, BATCH_SIZE, 0)
       .then((data) => {
         setNfts(data.nfts)
         setTotal(data.total)
@@ -59,12 +64,33 @@ export default function CollectionPage() {
       .finally(() => setNftsLoading(false))
   }, [chain, address, sort])
 
-  const loadMore = () => {
-    if (!chain || !address) return
-    const newOffset = offset + 50
-    setOffset(newOffset)
-    fetchCollectionNfts(chain, address, sort, 50, newOffset)
-      .then((data) => setNfts((prev) => [...prev, ...data.nfts]))
+  // Pre-cache: next batch + other sort views (first 24 of each)
+  useEffect(() => {
+    if (nftsLoading || !chain || !address) return
+
+    // Pre-cache next batch for current sort
+    precacheNextBatch(chain, address, sort, BATCH_SIZE, BATCH_SIZE)
+
+    // Pre-cache first 24 of other sort views
+    for (const opt of SORT_OPTIONS) {
+      if (opt.disabled || opt.value === sort) continue
+      precacheNextBatch(chain, address, opt.value, BATCH_SIZE, 0)
+    }
+  }, [nftsLoading, chain, address, sort])
+
+  const loadMore = async () => {
+    if (!chain || !address || loadingMore) return
+    setLoadingMore(true)
+    const newOffset = offset + BATCH_SIZE
+    try {
+      const data = await fetchCollectionNfts(chain, address, sort, BATCH_SIZE, newOffset)
+      setNfts((prev) => [...prev, ...data.nfts])
+      setOffset(newOffset)
+
+      // Pre-cache the NEXT next batch
+      precacheNextBatch(chain, address, sort, BATCH_SIZE, newOffset + BATCH_SIZE)
+    } catch { /* ignore */ }
+    setLoadingMore(false)
   }
 
   if (loading) {
@@ -98,7 +124,7 @@ export default function CollectionPage() {
 
   return (
     <div>
-      {/* Banner area */}
+      {/* Banner */}
       <div className="relative h-32 sm:h-44 bg-secondary overflow-hidden">
         {collection.image_url && (
           <img src={collection.image_url} alt="" className="h-full w-full object-cover opacity-30 blur-sm scale-110" />
@@ -157,10 +183,6 @@ export default function CollectionPage() {
           )}
         </div>
 
-        {collection.description && (
-          <p className="text-sm text-muted-foreground mb-6 max-w-2xl">{collection.description}</p>
-        )}
-
         {/* Sort + NFT count */}
         <div className="flex items-center justify-between mb-5">
           <span className="text-xs text-muted-foreground font-mono">
@@ -172,12 +194,14 @@ export default function CollectionPage() {
             className="bg-secondary text-foreground text-xs rounded-lg border border-border px-3 py-1.5 focus:outline-none focus:border-primary cursor-pointer"
           >
             {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value} disabled={o.disabled}>
+                {o.label}{o.disabled ? ' (soon)' : ''}
+              </option>
             ))}
           </select>
         </div>
 
-        {/* NFTs grid */}
+        {/* NFTs grid — chain loading animation */}
         {nftsLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-16">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -187,23 +211,30 @@ export default function CollectionPage() {
         ) : nfts.length > 0 ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pb-8">
-              {nfts.map((nft, i) => (
-                <NFTCard key={`${nft.chain}-${nft.address}-${nft.token_id}`} nft={nft} index={i} />
-              ))}
+              <AnimatePresence mode="popLayout">
+                {nfts.map((nft, i) => (
+                  <NFTCard
+                    key={`${nft.chain}-${nft.address}-${nft.token_id}`}
+                    nft={nft}
+                    index={i % BATCH_SIZE}
+                  />
+                ))}
+              </AnimatePresence>
             </div>
             {nfts.length < total && (
               <div className="text-center pb-16">
                 <button
                   onClick={loadMore}
-                  className="text-sm text-primary hover:underline font-medium cursor-pointer"
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 rounded-lg bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Load more ({total - nfts.length} remaining)
+                  {loadingMore ? 'Loading...' : `Load More (${total - nfts.length} remaining)`}
                 </button>
               </div>
             )}
           </>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-12">No NFTs indexed yet for this collection</p>
+          <p className="text-sm text-muted-foreground text-center py-12">No NFTs found for this collection</p>
         )}
       </div>
     </div>
