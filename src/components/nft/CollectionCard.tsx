@@ -1,53 +1,27 @@
-import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
 import { getOptimizedImageUrl } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
 
-const DOMINO_DELAY = 100 // ms between each card reveal
+const DOMINO_DELAY = 80
 
 interface CollectionCardProps {
   collection: ApiCollection
   index?: number
 }
 
+/**
+ * Collection carousel card with pure CSS domino animation.
+ * Parent must ensure all images are preloaded before rendering.
+ */
 export function CollectionCard({ collection, index = 0 }: CollectionCardProps) {
   const navigate = useNavigate()
-  const [visible, setVisible] = useState(false)
-  const [imageReady, setImageReady] = useState(false)
-  const mountTime = useRef(Date.now())
-
-  // Domino reveal: card appears only when image is ready AND it's this card's turn
-  useEffect(() => {
-    if (!imageReady) return
-    const minTime = mountTime.current + index * DOMINO_DELAY
-    const remaining = minTime - Date.now()
-    if (remaining <= 0) {
-      setVisible(true)
-    } else {
-      const t = setTimeout(() => setVisible(true), remaining)
-      return () => clearTimeout(t)
-    }
-  }, [imageReady, index])
-
-  // Pre-load image in background, mark ready when done
-  useEffect(() => {
-    if (!collection.image_url) { setImageReady(true); return }
-    const img = new Image()
-    img.onload = () => setImageReady(true)
-    img.onerror = () => setImageReady(true)
-    img.src = getOptimizedImageUrl(collection.image_url, 300)
-  }, [collection.image_url])
 
   return (
     <div
       onClick={() => navigate(`/collection/${collection.chain}/${collection.address}`)}
-      className="relative shrink-0 w-56 sm:w-64 cursor-pointer group"
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateX(0)' : 'translateX(20px)',
-        transition: 'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
-      }}
+      className="relative shrink-0 w-56 sm:w-64 cursor-pointer group domino-card-x"
+      style={{ animationDelay: `${index * DOMINO_DELAY}ms` }}
     >
       <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-secondary">
         {collection.image_url ? (
