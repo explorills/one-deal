@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MagnifyingGlass, FunnelSimple } from '@phosphor-icons/react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { NetworkBadge } from '@/components/ui/NetworkBadge'
-import { getOptimizedImageUrl, searchCollections } from '@/lib/api'
+import { getOptimizedImageUrl, searchCollections, fetchStats } from '@/lib/api'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { fetchRecentlyActive, fetchCollections, precacheCollectionNfts } from '@/lib/api'
 import type { ApiCollection } from '@/lib/api'
@@ -29,7 +28,20 @@ export default function Explore() {
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
+  const [totalCount, setTotalCount] = useState<number | null>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
+
+  // Fetch total collection count from stats
+  useEffect(() => {
+    fetchStats().then((s) => {
+      const stats = s.stats
+      if (chainFilter === 'all') {
+        setTotalCount(Object.values(stats).reduce((sum, s) => sum + s.collections, 0))
+      } else if (stats[chainFilter]) {
+        setTotalCount(stats[chainFilter].collections)
+      }
+    }).catch(() => {})
+  }, [chainFilter])
 
   // Initial load: recently active collections
   useEffect(() => {
@@ -161,7 +173,7 @@ export default function Explore() {
       {/* Count */}
       <div className="flex items-center justify-between mb-5">
         <span className="text-xs text-muted-foreground font-mono">
-          {loading || searching ? '...' : `${visible.length} of ${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
+          {loading || searching ? '...' : `${visible.length} of ${totalCount ?? collections.length} collection${(totalCount ?? collections.length) !== 1 ? 's' : ''}`}
         </span>
       </div>
 
@@ -182,52 +194,9 @@ export default function Explore() {
       ) : visible.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence mode="popLayout">
-              {visible.map((col, i) => (
-                <motion.div
-                  key={`${col.chain}-${col.address}`}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.35, delay: (i % BATCH_SIZE) * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => navigate(`/collection/${col.chain}/${col.address}`)}
-                  className="group rounded-xl border border-border p-4 hover:border-primary/30 transition-all cursor-pointer hover:shadow-[0_0_20px_oklch(0.72_0.17_195/0.08)]"
-                >
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-14 h-14 rounded-lg bg-secondary overflow-hidden shrink-0">
-                      {col.image_url ? (
-                        <img src={getOptimizedImageUrl(col.image_url, 200)} alt={col.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
-                          {col.symbol?.[0] || '?'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm truncate">{col.name || col.symbol || 'Unknown'}</h3>
-                        <NetworkBadge chain={col.chain} />
-                      </div>
-                      <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{col.symbol} &middot; {col.type}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-[11px]">
-                    <div>
-                      <span className="font-mono font-bold tabular-nums text-foreground">{col.nfts_cached}</span>
-                      <span className="text-muted-foreground ml-1">items</span>
-                    </div>
-                    <div>
-                      <span className="font-mono font-bold tabular-nums text-foreground">{col.holder_count}</span>
-                      <span className="text-muted-foreground ml-1">holders</span>
-                    </div>
-                    <div className="ml-auto">
-                      <span className="font-mono text-muted-foreground">{col.address.slice(0, 6)}...{col.address.slice(-4)}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {visible.map((col, i) => (
+              <ExploreCard key={`${col.chain}-${col.address}`} col={col} index={i % BATCH_SIZE} onNavigate={navigate} />
+            ))}
           </div>
 
           {/* Load More */}
@@ -264,4 +233,73 @@ function interleave<T>(a: T[], b: T[]): T[] {
     if (i < b.length) result.push(b[i])
   }
   return result
+}
+
+const DOMINO_DELAY = 80
+
+/** Explore grid card with domino reveal (image preloads, reveals in sequence) */
+function ExploreCard({ col, index, onNavigate }: { col: ApiCollection; index: number; onNavigate: (path: string) => void }) {
+  const [visible, setVisible] = useState(false)
+  const [imageReady, setImageReady] = useState(false)
+  const mountTime = useRef(Date.now())
+
+  useEffect(() => {
+    if (!imageReady) return
+    const minTime = mountTime.current + index * DOMINO_DELAY
+    const remaining = minTime - Date.now()
+    if (remaining <= 0) setVisible(true)
+    else { const t = setTimeout(() => setVisible(true), remaining); return () => clearTimeout(t) }
+  }, [imageReady, index])
+
+  useEffect(() => {
+    if (!col.image_url) { setImageReady(true); return }
+    const img = new Image()
+    img.onload = () => setImageReady(true)
+    img.onerror = () => setImageReady(true)
+    img.src = getOptimizedImageUrl(col.image_url, 200)
+  }, [col.image_url])
+
+  return (
+    <div
+      onClick={() => onNavigate(`/collection/${col.chain}/${col.address}`)}
+      className="group rounded-xl border border-border p-4 hover:border-primary/30 transition-all cursor-pointer hover:shadow-[0_0_20px_oklch(0.72_0.17_195/0.08)]"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(16px)',
+        transition: 'opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1), transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-14 h-14 rounded-lg bg-secondary overflow-hidden shrink-0">
+          {col.image_url ? (
+            <img src={getOptimizedImageUrl(col.image_url, 200)} alt={col.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground/30">
+              {col.symbol?.[0] || '?'}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm truncate">{col.name || col.symbol || 'Unknown'}</h3>
+            <NetworkBadge chain={col.chain} />
+          </div>
+          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{col.symbol} &middot; {col.type}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-[11px]">
+        <div>
+          <span className="font-mono font-bold tabular-nums text-foreground">{col.nfts_cached}</span>
+          <span className="text-muted-foreground ml-1">items</span>
+        </div>
+        <div>
+          <span className="font-mono font-bold tabular-nums text-foreground">{col.holder_count}</span>
+          <span className="text-muted-foreground ml-1">holders</span>
+        </div>
+        <div className="ml-auto">
+          <span className="font-mono text-muted-foreground">{col.address.slice(0, 6)}...{col.address.slice(-4)}</span>
+        </div>
+      </div>
+    </div>
+  )
 }
