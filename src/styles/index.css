@@ -48,11 +48,7 @@
 @layer base {
   * {
     @apply border-border;
-    cursor: default;
   }
-  button, a, [role="button"] { cursor: pointer !important; }
-  button *, a *, [role="button"] * { cursor: pointer !important; }
-  input, textarea, select { cursor: text !important; }
 
   body {
     font-family: var(--font-sans);
