@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { OneIdProvider, EcosystemNavbar, EcosystemFooter } from '@explorills/one-ecosystem-ui'
 import { Layout } from '@/components/layout/Layout'
-import { getOneIdApiUrl } from '@/lib/utils'
 import { WALLETCONNECT_PROJECT_ID } from '@/lib/constants'
 import Home from '@/pages/Home'
 import Explore from '@/pages/Explore'
@@ -36,7 +35,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <OneIdProvider apiUrl={getOneIdApiUrl()} projectId={WALLETCONNECT_PROJECT_ID} profilePath="/profile" platformColor="oklch(0.72 0.17 195)">
+    <OneIdProvider projectId={WALLETCONNECT_PROJECT_ID} profilePath="/profile" platformColor="oklch(0.72 0.17 195)">
       <AppRoutes />
     </OneIdProvider>
   )

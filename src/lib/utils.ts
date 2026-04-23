@@ -39,9 +39,3 @@ export function isDevEnvironment(): boolean {
   const hostname = window.location.hostname
   return hostname === 'localhost' || hostname.endsWith('.app.github.dev')
 }
-
-export function getOneIdApiUrl(): string {
-  if (isDevEnvironment()) return 'http://localhost:3010'
-  if (window.location.hostname.startsWith('staging2-all-access')) return 'https://api-dev-id.expl.one'
-  return 'https://api-id.expl.one'
-}
